@@ -1,0 +1,441 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000101 /* SmartLocalAlbumApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000001 /* SmartLocalAlbumApp.swift */; };
+		100000000000000000000102 /* Models/DomainModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000002 /* Models/DomainModels.swift */; };
+		100000000000000000000103 /* Models/CoreDataEntities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000003 /* Models/CoreDataEntities.swift */; };
+		100000000000000000000104 /* Utils/VectorUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000004 /* Utils/VectorUtils.swift */; };
+		100000000000000000000105 /* Services/ImageEmbeddingExtracting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000005 /* Services/ImageEmbeddingExtracting.swift */; };
+		100000000000000000000106 /* Services/MockImageEmbeddingExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000006 /* Services/MockImageEmbeddingExtractor.swift */; };
+		100000000000000000000107 /* Services/ImageEmbeddingExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000007 /* Services/ImageEmbeddingExtractor.swift */; };
+		100000000000000000000108 /* Services/SimilarityClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000008 /* Services/SimilarityClassifier.swift */; };
+		100000000000000000000109 /* Managers/PhotoLibraryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000009 /* Managers/PhotoLibraryManager.swift */; };
+		100000000000000000000110 /* Managers/CoreDataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000010 /* Managers/CoreDataManager.swift */; };
+		100000000000000000000111 /* Managers/SmartCategoryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000011 /* Managers/SmartCategoryManager.swift */; };
+		100000000000000000000112 /* Managers/ScanManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000012 /* Managers/ScanManager.swift */; };
+		100000000000000000000113 /* Views/HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000013 /* Views/HomeView.swift */; };
+		100000000000000000000114 /* Views/CreateCategoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000014 /* Views/CreateCategoryView.swift */; };
+		100000000000000000000115 /* Views/CategoryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000015 /* Views/CategoryDetailView.swift */; };
+		100000000000000000000116 /* Views/PhotoGridItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000016 /* Views/PhotoGridItemView.swift */; };
+		100000000000000000000117 /* Views/PhotoPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000017 /* Views/PhotoPreviewView.swift */; };
+		100000000000000000000118 /* Views/EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000018 /* Views/EmptyStateView.swift */; };
+		100000000000000000000119 /* Views/ShareSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000021 /* Views/ShareSheetView.swift */; };
+		100000000000000000000120 /* Resources/Models/mobileclip_s2_image.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000022 /* Resources/Models/mobileclip_s2_image.mlpackage */; };
+		100000000000000000000121 /* Services/FaceEmbeddingExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000023 /* Services/FaceEmbeddingExtractor.swift */; };
+		100000000000000000000122 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000024 /* Assets.xcassets */; };
+		100000000000000000000123 /* Services/TextEmbeddingExtracting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000025 /* Services/TextEmbeddingExtracting.swift */; };
+		100000000000000000000124 /* Services/MobileCLIPTextEmbeddingExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000026 /* Services/MobileCLIPTextEmbeddingExtractor.swift */; };
+		100000000000000000000126 /* Resources/Models/mobileclip_s2_text.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000028 /* Resources/Models/mobileclip_s2_text.mlpackage */; };
+		100000000000000000000128 /* Resources/Models/clip-vocab.json in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000030 /* Resources/Models/clip-vocab.json */; };
+		100000000000000000000129 /* Resources/Models/clip-merges.txt in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000031 /* Resources/Models/clip-merges.txt */; };
+		100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */; };
+		100000000000000000000131 /* Resources/Models/mobileclip2_l14_image.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */; };
+		100000000000000000000132 /* Views/OrganizePhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000034 /* Views/OrganizePhotosView.swift */; };
+		100000000000000000000133 /* Views/RecycleBinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000035 /* Views/RecycleBinView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		100000000000000000000001 /* SmartLocalAlbumApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartLocalAlbumApp.swift; sourceTree = "<group>"; };
+		100000000000000000000002 /* Models/DomainModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/DomainModels.swift; sourceTree = "<group>"; };
+		100000000000000000000003 /* Models/CoreDataEntities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/CoreDataEntities.swift; sourceTree = "<group>"; };
+		100000000000000000000004 /* Utils/VectorUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utils/VectorUtils.swift; sourceTree = "<group>"; };
+		100000000000000000000005 /* Services/ImageEmbeddingExtracting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ImageEmbeddingExtracting.swift; sourceTree = "<group>"; };
+		100000000000000000000006 /* Services/MockImageEmbeddingExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MockImageEmbeddingExtractor.swift; sourceTree = "<group>"; };
+		100000000000000000000007 /* Services/ImageEmbeddingExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ImageEmbeddingExtractor.swift; sourceTree = "<group>"; };
+		100000000000000000000008 /* Services/SimilarityClassifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/SimilarityClassifier.swift; sourceTree = "<group>"; };
+		100000000000000000000009 /* Managers/PhotoLibraryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/PhotoLibraryManager.swift; sourceTree = "<group>"; };
+		100000000000000000000010 /* Managers/CoreDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/CoreDataManager.swift; sourceTree = "<group>"; };
+		100000000000000000000011 /* Managers/SmartCategoryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/SmartCategoryManager.swift; sourceTree = "<group>"; };
+		100000000000000000000012 /* Managers/ScanManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/ScanManager.swift; sourceTree = "<group>"; };
+		100000000000000000000013 /* Views/HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeView.swift; sourceTree = "<group>"; };
+		100000000000000000000014 /* Views/CreateCategoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CreateCategoryView.swift; sourceTree = "<group>"; };
+		100000000000000000000015 /* Views/CategoryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CategoryDetailView.swift; sourceTree = "<group>"; };
+		100000000000000000000016 /* Views/PhotoGridItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PhotoGridItemView.swift; sourceTree = "<group>"; };
+		100000000000000000000017 /* Views/PhotoPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PhotoPreviewView.swift; sourceTree = "<group>"; };
+		100000000000000000000018 /* Views/EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/EmptyStateView.swift; sourceTree = "<group>"; };
+		100000000000000000000019 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+		100000000000000000000020 /* SmartAlbum.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SmartAlbum.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		100000000000000000000021 /* Views/ShareSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ShareSheetView.swift; sourceTree = "<group>"; };
+		100000000000000000000022 /* Resources/Models/mobileclip_s2_image.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper.mlpackage; path = Resources/Models/mobileclip_s2_image.mlpackage; sourceTree = "<group>"; };
+		100000000000000000000023 /* Services/FaceEmbeddingExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/FaceEmbeddingExtractor.swift; sourceTree = "<group>"; };
+		100000000000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		100000000000000000000025 /* Services/TextEmbeddingExtracting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/TextEmbeddingExtracting.swift; sourceTree = "<group>"; };
+		100000000000000000000026 /* Services/MobileCLIPTextEmbeddingExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/MobileCLIPTextEmbeddingExtractor.swift; sourceTree = "<group>"; };
+		100000000000000000000028 /* Resources/Models/mobileclip_s2_text.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper.mlpackage; path = Resources/Models/mobileclip_s2_text.mlpackage; sourceTree = "<group>"; };
+		100000000000000000000030 /* Resources/Models/clip-vocab.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Resources/Models/clip-vocab.json"; sourceTree = "<group>"; };
+		100000000000000000000031 /* Resources/Models/clip-merges.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Resources/Models/clip-merges.txt"; sourceTree = "<group>"; };
+		100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LazyEmbeddingExtractors.swift; sourceTree = "<group>"; };
+		100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper.mlpackage; path = Resources/Models/mobileclip2_l14_image.mlpackage; sourceTree = "<group>"; };
+		100000000000000000000034 /* Views/OrganizePhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/OrganizePhotosView.swift; sourceTree = "<group>"; };
+		100000000000000000000035 /* Views/RecycleBinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RecycleBinView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		100000000000000000000201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		100000000000000000000301 = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000302 /* SmartLocalAlbum */,
+				100000000000000000000303 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		100000000000000000000302 /* SmartLocalAlbum */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000001 /* SmartLocalAlbumApp.swift */,
+				100000000000000000000002 /* Models/DomainModels.swift */,
+				100000000000000000000003 /* Models/CoreDataEntities.swift */,
+				100000000000000000000004 /* Utils/VectorUtils.swift */,
+				100000000000000000000005 /* Services/ImageEmbeddingExtracting.swift */,
+				100000000000000000000006 /* Services/MockImageEmbeddingExtractor.swift */,
+				100000000000000000000007 /* Services/ImageEmbeddingExtractor.swift */,
+				100000000000000000000023 /* Services/FaceEmbeddingExtractor.swift */,
+				100000000000000000000025 /* Services/TextEmbeddingExtracting.swift */,
+				100000000000000000000026 /* Services/MobileCLIPTextEmbeddingExtractor.swift */,
+				100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */,
+				100000000000000000000008 /* Services/SimilarityClassifier.swift */,
+				100000000000000000000009 /* Managers/PhotoLibraryManager.swift */,
+				100000000000000000000010 /* Managers/CoreDataManager.swift */,
+				100000000000000000000011 /* Managers/SmartCategoryManager.swift */,
+				100000000000000000000012 /* Managers/ScanManager.swift */,
+				100000000000000000000013 /* Views/HomeView.swift */,
+				100000000000000000000014 /* Views/CreateCategoryView.swift */,
+				100000000000000000000015 /* Views/CategoryDetailView.swift */,
+				100000000000000000000016 /* Views/PhotoGridItemView.swift */,
+				100000000000000000000017 /* Views/PhotoPreviewView.swift */,
+				100000000000000000000034 /* Views/OrganizePhotosView.swift */,
+				100000000000000000000035 /* Views/RecycleBinView.swift */,
+				100000000000000000000018 /* Views/EmptyStateView.swift */,
+				100000000000000000000021 /* Views/ShareSheetView.swift */,
+				100000000000000000000019 /* Resources/Info.plist */,
+				100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */,
+				100000000000000000000022 /* Resources/Models/mobileclip_s2_image.mlpackage */,
+				100000000000000000000028 /* Resources/Models/mobileclip_s2_text.mlpackage */,
+				100000000000000000000030 /* Resources/Models/clip-vocab.json */,
+				100000000000000000000031 /* Resources/Models/clip-merges.txt */,
+				100000000000000000000024 /* Assets.xcassets */,
+			);
+			path = SmartLocalAlbum;
+			sourceTree = "<group>";
+		};
+		100000000000000000000303 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				100000000000000000000020 /* SmartAlbum.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		100000000000000000000401 /* SmartLocalAlbum */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 100000000000000000000701 /* Build configuration list for PBXNativeTarget "SmartLocalAlbum" */;
+			buildPhases = (
+				100000000000000000000601 /* Sources */,
+				100000000000000000000201 /* Frameworks */,
+				100000000000000000000602 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SmartLocalAlbum;
+			productName = SmartAlbum;
+			productReference = 100000000000000000000020 /* SmartAlbum.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		100000000000000000000501 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					100000000000000000000401 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 100000000000000000000702 /* Build configuration list for PBXProject "SmartLocalAlbum" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 100000000000000000000301;
+			productRefGroup = 100000000000000000000303 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				100000000000000000000401 /* SmartLocalAlbum */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		100000000000000000000602 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000122 /* Assets.xcassets in Resources */,
+				100000000000000000000128 /* Resources/Models/clip-vocab.json in Resources */,
+				100000000000000000000129 /* Resources/Models/clip-merges.txt in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		100000000000000000000601 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000101 /* SmartLocalAlbumApp.swift in Sources */,
+				100000000000000000000102 /* Models/DomainModels.swift in Sources */,
+				100000000000000000000103 /* Models/CoreDataEntities.swift in Sources */,
+				100000000000000000000104 /* Utils/VectorUtils.swift in Sources */,
+				100000000000000000000105 /* Services/ImageEmbeddingExtracting.swift in Sources */,
+				100000000000000000000106 /* Services/MockImageEmbeddingExtractor.swift in Sources */,
+				100000000000000000000107 /* Services/ImageEmbeddingExtractor.swift in Sources */,
+				100000000000000000000108 /* Services/SimilarityClassifier.swift in Sources */,
+				100000000000000000000109 /* Managers/PhotoLibraryManager.swift in Sources */,
+				100000000000000000000110 /* Managers/CoreDataManager.swift in Sources */,
+				100000000000000000000111 /* Managers/SmartCategoryManager.swift in Sources */,
+				100000000000000000000112 /* Managers/ScanManager.swift in Sources */,
+				100000000000000000000113 /* Views/HomeView.swift in Sources */,
+				100000000000000000000114 /* Views/CreateCategoryView.swift in Sources */,
+				100000000000000000000115 /* Views/CategoryDetailView.swift in Sources */,
+				100000000000000000000116 /* Views/PhotoGridItemView.swift in Sources */,
+				100000000000000000000117 /* Views/PhotoPreviewView.swift in Sources */,
+				100000000000000000000132 /* Views/OrganizePhotosView.swift in Sources */,
+				100000000000000000000133 /* Views/RecycleBinView.swift in Sources */,
+				100000000000000000000118 /* Views/EmptyStateView.swift in Sources */,
+				100000000000000000000119 /* Views/ShareSheetView.swift in Sources */,
+				100000000000000000000120 /* Resources/Models/mobileclip_s2_image.mlpackage in Sources */,
+				100000000000000000000121 /* Services/FaceEmbeddingExtractor.swift in Sources */,
+				100000000000000000000123 /* Services/TextEmbeddingExtracting.swift in Sources */,
+				100000000000000000000124 /* Services/MobileCLIPTextEmbeddingExtractor.swift in Sources */,
+				100000000000000000000126 /* Resources/Models/mobileclip_s2_text.mlpackage in Sources */,
+				100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */,
+				100000000000000000000131 /* Resources/Models/mobileclip2_l14_image.mlpackage in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		100000000000000000000801 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		100000000000000000000802 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		100000000000000000000803 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 5J56V9S9H8;
+				ENABLE_DEBUG_DYLIB = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SmartLocalAlbum/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.loyuk.SmartLocalAlbum;
+				PRODUCT_NAME = SmartAlbum;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		100000000000000000000804 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 5J56V9S9H8;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SmartLocalAlbum/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.loyuk.SmartLocalAlbum;
+				PRODUCT_NAME = SmartAlbum;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		100000000000000000000701 /* Build configuration list for PBXNativeTarget "SmartLocalAlbum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				100000000000000000000803 /* Debug */,
+				100000000000000000000804 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		100000000000000000000702 /* Build configuration list for PBXProject "SmartLocalAlbum" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				100000000000000000000801 /* Debug */,
+				100000000000000000000802 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 100000000000000000000501 /* Project object */;
+}

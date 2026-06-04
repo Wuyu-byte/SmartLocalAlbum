@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build output
+DerivedData/
+build/
+*.ipa
+*.xcarchive
+*.dSYM/
+
+# Swift Package Manager / Xcode caches
+.build/
+Package.resolved
+
+# Local virtual environments and external checkouts
+.venv/
+dinov2/
+checkpoints/
+
+# Large model resources
+SmartLocalAlbum/Resources/Models/*
+!SmartLocalAlbum/Resources/Models/README.md
+
