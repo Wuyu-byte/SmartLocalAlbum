@@ -21,17 +21,6 @@ struct SmartLocalAlbumApp: App {
             },
             fallbackFactory: { MockImageEmbeddingExtractor() }
         )
-        let qualityImageExtractor: any ImageEmbeddingExtracting = LazyImageEmbeddingExtractor(
-            embeddingDimension: 768,
-            factory: {
-                try ImageEmbeddingExtractor(
-                    modelResourceName: "mobileclip2_l14_image",
-                    embeddingDimension: 768,
-                    fallbackInputWidth: 224,
-                    fallbackInputHeight: 224
-                )
-            }
-        )
         let textExtractor: any TextEmbeddingExtracting = LazyTextEmbeddingExtractor(
             embeddingDimension: 512,
             factory: { try MobileCLIPTextEmbeddingExtractor() },
@@ -45,7 +34,6 @@ struct SmartLocalAlbumApp: App {
             wrappedValue: SmartCategoryManager(
                 coreDataManager: coreDataManager,
                 fastImageEmbeddingExtractor: fastImageExtractor,
-                qualityImageEmbeddingExtractor: qualityImageExtractor,
                 textEmbeddingExtractor: textExtractor,
                 faceEmbeddingExtractor: faceExtractor
             )
@@ -55,7 +43,6 @@ struct SmartLocalAlbumApp: App {
                 photoLibraryManager: photoLibraryManager,
                 coreDataManager: coreDataManager,
                 fastImageEmbeddingExtractor: fastImageExtractor,
-                qualityImageEmbeddingExtractor: qualityImageExtractor,
                 faceEmbeddingExtractor: faceExtractor
             )
         )

@@ -1,6 +1,6 @@
 # SmartLocalAlbum
 
-iOS 16+ SwiftUI sample project for local-only smart photo grouping.
+iOS 16+ SwiftUI project for local-only photo grouping and lightweight camera-roll cleanup.
 
 ## Directory
 
@@ -77,39 +77,31 @@ The app stores only identifiers, embeddings, thresholds, similarities, and resul
 
 ```xml
 <key>NSPhotoLibraryUsageDescription</key>
-<string>SmartAlbum needs photo library access to classify local photos on device. It only deletes system photos after you confirm deletion.</string>
+<string>SmartAlbum 只在本机读取照片用于整理和分类，不上传照片。</string>
 ```
 
 ## Model hookup
 
-The project falls back to mock extractors when optional Core ML packages are missing, so the UI and storage flows remain testable. Accurate classification requires the real models.
+The project falls back to mock extractors when optional Core ML packages are missing, so the UI and storage flows remain testable. Real on-device classification requires the bundled MobileCLIP image and text models.
 
 Expected model resources:
 
 - `mobileclip_s2_image.mlpackage`: MobileCLIP image encoder, already included.
-- `mobileclip2_l14_image.mlpackage`: MobileCLIP2-L/14 image encoder for accurate reference-image categories.
 - `mobileclip_s2_text.mlpackage`: MobileCLIP text encoder for natural-language categories.
 - `clip-vocab.json` and `clip-merges.txt`: CLIP BPE tokenizer resources used by the Swift text extractor.
 
-Generate the optional packages from local checkouts/weights:
+Generate the optional text package from local checkouts/weights:
 
 ```bash
 python Scripts/convert_mobileclip_text.py \
   --mobileclip-repo ../ml-mobileclip \
   --checkpoint checkpoints/mobileclip_s2.pt \
   --output-dir SmartLocalAlbum/Resources/Models
-
-python Scripts/convert_mobileclip_image.py \
-  --checkpoint checkpoints/mobileclip2_l14_hf/mobileclip2_l14.pt \
-  --variant MobileCLIP2-L-14 \
-  --output-name mobileclip2_l14_image \
-  --image-size 224 \
-  --output-dir SmartLocalAlbum/Resources/Models
 ```
 
-After generating the packages, add the new `.mlpackage` files plus `clip-vocab.json` and `clip-merges.txt` to the `SmartLocalAlbum` target in Xcode. `SmartLocalAlbumApp.swift` lazily loads the real MobileCLIP extractors when the compiled resources are first needed.
+After generating the packages, add `mobileclip_s2_image.mlpackage`, `mobileclip_s2_text.mlpackage`, `clip-vocab.json`, and `clip-merges.txt` to the `SmartLocalAlbum` target in Xcode. `SmartLocalAlbumApp.swift` lazily loads the real MobileCLIP extractors when the compiled resources are first needed.
 
-MobileCLIP is used for both natural-language categories and reference-image categories. Reference-image categories support a precise MobileCLIP2-L/14 mode and a fast MobileCLIP-S2 mode.
+MobileCLIP-S2 is used for both natural-language categories and reference-image categories. The old MobileCLIP2-L/14 package may remain on disk for reference, but it is not part of the app target and is not bundled into builds.
 
 ## Build and run
 
@@ -117,4 +109,4 @@ MobileCLIP is used for both natural-language categories and reference-image cate
 2. Select the `SmartLocalAlbum` scheme.
 3. Choose an iPhone simulator or a physical iPhone running iOS 16+.
 4. For a physical device, set your signing team and bundle identifier.
-5. Run. The mock extractors let you test permissions, category creation, scanning, matching strictness adjustment, deletion, and grid preview without the optional models.
+5. Run. The mock extractors let you test permissions, category creation, scanning, matching strictness adjustment, cleanup, deletion, and grid preview without the optional models.

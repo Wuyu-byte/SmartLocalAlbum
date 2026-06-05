@@ -4,26 +4,22 @@ import UIKit
 @MainActor
 final class SmartCategoryManager: ObservableObject {
     nonisolated static let naturalLanguageDefaultThreshold: Float = 0.20
-    nonisolated static let referenceQualityDefaultThreshold: Float = 0.70
     nonisolated static let referenceFastDefaultThreshold: Float = 0.72
     nonisolated static let portraitDefaultThreshold: Float = 0.72
 
     private let coreDataManager: CoreDataManager
     private let fastImageEmbeddingExtractor: any ImageEmbeddingExtracting
-    private let qualityImageEmbeddingExtractor: any ImageEmbeddingExtracting
     private let textEmbeddingExtractor: any TextEmbeddingExtracting
     private let faceEmbeddingExtractor: any ImageEmbeddingExtracting
 
     init(
         coreDataManager: CoreDataManager,
         fastImageEmbeddingExtractor: any ImageEmbeddingExtracting,
-        qualityImageEmbeddingExtractor: any ImageEmbeddingExtracting,
         textEmbeddingExtractor: any TextEmbeddingExtracting,
         faceEmbeddingExtractor: any ImageEmbeddingExtracting
     ) {
         self.coreDataManager = coreDataManager
         self.fastImageEmbeddingExtractor = fastImageEmbeddingExtractor
-        self.qualityImageEmbeddingExtractor = qualityImageEmbeddingExtractor
         self.textEmbeddingExtractor = textEmbeddingExtractor
         self.faceEmbeddingExtractor = faceEmbeddingExtractor
     }
@@ -40,8 +36,7 @@ final class SmartCategoryManager: ObservableObject {
             sampleImages: sampleImages,
             sampleAssetIds: sampleAssetIds,
             threshold: threshold,
-            isPortrait: isPortrait,
-            referenceMatchingMode: .fast
+            isPortrait: isPortrait
         )
     }
 
@@ -79,8 +74,7 @@ final class SmartCategoryManager: ObservableObject {
         sampleImages: [UIImage],
         sampleAssetIds: [String],
         threshold: Float = SmartCategoryManager.referenceFastDefaultThreshold,
-        isPortrait: Bool = false,
-        referenceMatchingMode: ReferenceMatchingMode = .fast
+        isPortrait: Bool = false
     ) async throws -> SmartCategoryModel {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { throw SmartCategoryError.emptyName }
@@ -88,21 +82,8 @@ final class SmartCategoryManager: ObservableObject {
 
         var embeddings: [[Float]] = []
         embeddings.reserveCapacity(sampleImages.count)
-        let extractor: any ImageEmbeddingExtracting
-        let matchingEmbeddingKind: EmbeddingKind
-        if isPortrait {
-            extractor = faceEmbeddingExtractor
-            matchingEmbeddingKind = .face
-        } else {
-            switch referenceMatchingMode {
-            case .quality:
-                extractor = qualityImageEmbeddingExtractor
-                matchingEmbeddingKind = .mobileclip2Image
-            case .fast:
-                extractor = fastImageEmbeddingExtractor
-                matchingEmbeddingKind = .image
-            }
-        }
+        let extractor: any ImageEmbeddingExtracting = isPortrait ? faceEmbeddingExtractor : fastImageEmbeddingExtractor
+        let matchingEmbeddingKind: EmbeddingKind = isPortrait ? .face : .image
 
         for image in sampleImages {
             let embedding = try await extractor.embedding(for: image)
@@ -123,7 +104,7 @@ final class SmartCategoryManager: ObservableObject {
             matchingEmbeddingKind: matchingEmbeddingKind,
             promptText: nil,
             templateKey: nil,
-            referenceMatchingMode: isPortrait ? .fast : referenceMatchingMode
+            referenceMatchingMode: .fast
         )
     }
 

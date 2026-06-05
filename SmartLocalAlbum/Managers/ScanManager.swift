@@ -11,7 +11,6 @@ final class ScanManager: ObservableObject {
     private let photoLibraryManager: PhotoLibraryManager
     private let coreDataManager: CoreDataManager
     private let fastImageEmbeddingExtractor: any ImageEmbeddingExtracting
-    private let qualityImageEmbeddingExtractor: any ImageEmbeddingExtracting
     private let faceEmbeddingExtractor: any ImageEmbeddingExtracting
     private let classifier = SimilarityClassifier()
     private var scanTask: Task<Void, Never>?
@@ -20,13 +19,11 @@ final class ScanManager: ObservableObject {
         photoLibraryManager: PhotoLibraryManager,
         coreDataManager: CoreDataManager,
         fastImageEmbeddingExtractor: any ImageEmbeddingExtracting,
-        qualityImageEmbeddingExtractor: any ImageEmbeddingExtracting,
         faceEmbeddingExtractor: any ImageEmbeddingExtracting
     ) {
         self.photoLibraryManager = photoLibraryManager
         self.coreDataManager = coreDataManager
         self.fastImageEmbeddingExtractor = fastImageEmbeddingExtractor
-        self.qualityImageEmbeddingExtractor = qualityImageEmbeddingExtractor
         self.faceEmbeddingExtractor = faceEmbeddingExtractor
     }
 
@@ -89,7 +86,6 @@ final class ScanManager: ObservableObject {
                 return
             }
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
-            let qualityImageCategories = categories.filter { $0.matchingEmbeddingKind == .mobileclip2Image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
 
             let trashedAssetIds = try coreDataManager.fetchTrashedAssetIdSet()
@@ -109,7 +105,6 @@ final class ScanManager: ObservableObject {
 
                 var matches: [ClassificationMatch] = []
                 let needsImageEmbedding = !imageCategories.isEmpty
-                let needsQualityImageEmbedding = !qualityImageCategories.isEmpty
                 let needsFaceEmbedding = !faceCategories.isEmpty
                 var scanImage: UIImage?
 
@@ -125,22 +120,6 @@ final class ScanManager: ObservableObject {
                             assetLocalIdentifier: assetId,
                             embedding: embedding,
                             categories: imageCategories
-                        )
-                    }
-                }
-
-                if needsQualityImageEmbedding {
-                    if let embedding = try await embedding(
-                        for: asset,
-                        assetId: assetId,
-                        kind: .mobileclip2Image,
-                        forceReextract: forceReextract,
-                        cachedImage: &scanImage
-                    ) {
-                        matches += classifier.classify(
-                            assetLocalIdentifier: assetId,
-                            embedding: embedding,
-                            categories: qualityImageCategories
                         )
                     }
                 }
@@ -182,17 +161,14 @@ final class ScanManager: ObservableObject {
         do {
             let categories = try coreDataManager.fetchCategoryModels()
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
-            let qualityImageCategories = categories.filter { $0.matchingEmbeddingKind == .mobileclip2Image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
             let trashedAssetIds = try coreDataManager.fetchTrashedAssetIdSet()
             let exclusionMap = try coreDataManager.fetchCategoryExclusionMap()
             let imageEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .image)
                 .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
-            let qualityImageEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .mobileclip2Image)
-                .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
             let faceEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .face)
                 .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
-            let total = imageEmbeddings.count + qualityImageEmbeddings.count + faceEmbeddings.count
+            let total = imageEmbeddings.count + faceEmbeddings.count
             progress = ScanProgress(
                 isScanning: true,
                 processed: 0,
@@ -203,9 +179,7 @@ final class ScanManager: ObservableObject {
             var processed = 0
             var groupedMatches: [String: [ClassificationMatch]] = [:]
             let allReclassifiedAssetIds = Set(
-                imageEmbeddings.map(\.assetLocalIdentifier) +
-                qualityImageEmbeddings.map(\.assetLocalIdentifier) +
-                faceEmbeddings.map(\.assetLocalIdentifier)
+                imageEmbeddings.map(\.assetLocalIdentifier) + faceEmbeddings.map(\.assetLocalIdentifier)
             )
 
             for item in imageEmbeddings {
@@ -214,18 +188,6 @@ final class ScanManager: ObservableObject {
                     assetLocalIdentifier: item.assetLocalIdentifier,
                     embedding: item.embedding,
                     categories: imageCategories
-                )
-                groupedMatches[item.assetLocalIdentifier, default: []] += matches
-                processed += 1
-                progress.processed = processed
-            }
-
-            for item in qualityImageEmbeddings {
-                if Task.isCancelled { break }
-                let matches = classifier.classify(
-                    assetLocalIdentifier: item.assetLocalIdentifier,
-                    embedding: item.embedding,
-                    categories: qualityImageCategories
                 )
                 groupedMatches[item.assetLocalIdentifier, default: []] += matches
                 processed += 1
@@ -293,9 +255,7 @@ final class ScanManager: ObservableObject {
                 extractor = fastImageEmbeddingExtractor
             case .face:
                 extractor = faceEmbeddingExtractor
-            case .mobileclip2Image:
-                extractor = qualityImageEmbeddingExtractor
-            case .dinov2Image:
+            case .mobileclip2Image, .dinov2Image:
                 return nil
             }
             let embedding = try await extractor.embedding(for: image)

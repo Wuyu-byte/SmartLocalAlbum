@@ -35,7 +35,6 @@
 		100000000000000000000128 /* Resources/Models/clip-vocab.json in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000030 /* Resources/Models/clip-vocab.json */; };
 		100000000000000000000129 /* Resources/Models/clip-merges.txt in Resources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000031 /* Resources/Models/clip-merges.txt */; };
 		100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */; };
-		100000000000000000000131 /* Resources/Models/mobileclip2_l14_image.mlpackage in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */; };
 		100000000000000000000132 /* Views/OrganizePhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000034 /* Views/OrganizePhotosView.swift */; };
 		100000000000000000000133 /* Views/RecycleBinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000035 /* Views/RecycleBinView.swift */; };
 /* End PBXBuildFile section */
@@ -71,7 +70,6 @@
 		100000000000000000000030 /* Resources/Models/clip-vocab.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Resources/Models/clip-vocab.json"; sourceTree = "<group>"; };
 		100000000000000000000031 /* Resources/Models/clip-merges.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Resources/Models/clip-merges.txt"; sourceTree = "<group>"; };
 		100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LazyEmbeddingExtractors.swift; sourceTree = "<group>"; };
-		100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper.mlpackage; path = Resources/Models/mobileclip2_l14_image.mlpackage; sourceTree = "<group>"; };
 		100000000000000000000034 /* Views/OrganizePhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/OrganizePhotosView.swift; sourceTree = "<group>"; };
 		100000000000000000000035 /* Views/RecycleBinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RecycleBinView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -124,7 +122,6 @@
 				100000000000000000000018 /* Views/EmptyStateView.swift */,
 				100000000000000000000021 /* Views/ShareSheetView.swift */,
 				100000000000000000000019 /* Resources/Info.plist */,
-				100000000000000000000033 /* Resources/Models/mobileclip2_l14_image.mlpackage */,
 				100000000000000000000022 /* Resources/Models/mobileclip_s2_image.mlpackage */,
 				100000000000000000000028 /* Resources/Models/mobileclip_s2_text.mlpackage */,
 				100000000000000000000030 /* Resources/Models/clip-vocab.json */,
@@ -240,7 +237,6 @@
 				100000000000000000000124 /* Services/MobileCLIPTextEmbeddingExtractor.swift in Sources */,
 				100000000000000000000126 /* Resources/Models/mobileclip_s2_text.mlpackage in Sources */,
 				100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */,
-				100000000000000000000131 /* Resources/Models/mobileclip2_l14_image.mlpackage in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

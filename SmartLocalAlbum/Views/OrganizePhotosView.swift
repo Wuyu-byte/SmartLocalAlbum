@@ -27,7 +27,7 @@ struct OrganizePhotosView: View {
                 organizerView
             }
         }
-        .navigationTitle("整理图片")
+        .navigationTitle("整理")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !assetIds.isEmpty {
@@ -67,107 +67,187 @@ struct OrganizePhotosView: View {
     }
 
     private var startView: some View {
-        VStack(spacing: 22) {
-            Spacer()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Image(systemName: "rectangle.stack.badge.play")
+                        .font(.system(size: 34, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 68, height: 68)
+                        .background(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(.black)
+                        )
 
-            Image(systemName: "rectangle.stack.badge.play")
-                .font(.system(size: 54, weight: .semibold))
-                .foregroundStyle(.tint)
+                    Text("一次只整理一小组")
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                    Text("抽出一组照片，逐张决定放入分类、保留为未分类，或移入回收站。")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(spacing: 8) {
-                Text("随机抽一组照片来整理")
-                    .font(.title3.weight(.semibold))
-                Text("适合每天花几分钟处理一小批：加入分类、设为未分类、移入回收站，处理完自动进入下一张。")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("本次整理")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(requestedCount) 张")
+                            .font(.title2.monospacedDigit().weight(.semibold))
+                    }
 
-            Stepper(value: $requestedCount, in: 5...200, step: 5) {
-                HStack {
-                    Label("本次数量", systemImage: "number")
-                    Spacer()
-                    Text("\(requestedCount) 张")
-                        .font(.headline.monospacedDigit())
+                    Stepper("调整数量", value: $requestedCount, in: 5...200, step: 5)
+
+                    HStack(spacing: 10) {
+                        quickCountButton(10)
+                        quickCountButton(25)
+                        quickCountButton(50)
+                        quickCountButton(100)
+                    }
+                }
+                .padding(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                )
+
+                Button {
+                    Task { await startSession() }
+                } label: {
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .tint(.white)
+                        }
+                        Label("开始整理", systemImage: "play.fill")
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.accentColor)
+                )
+                .disabled(isLoading)
+
+                if let statusMessage {
+                    Text(statusMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
             }
-            .padding(.horizontal)
-
-            HStack {
-                quickCountButton(10)
-                quickCountButton(25)
-                quickCountButton(50)
-                quickCountButton(100)
-            }
-
-            Button {
-                Task { await startSession() }
-            } label: {
-                if isLoading {
-                    ProgressView()
-                } else {
-                    Label("开始整理", systemImage: "play.fill")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(isLoading)
-
-            if let statusMessage {
-                Text(statusMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Spacer()
+            .padding(24)
         }
-        .padding()
+        .background(Color(.systemGroupedBackground))
     }
 
     private var organizerView: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("\(currentIndex + 1) / \(assetIds.count)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    skipPhoto()
-                } label: {
-                    Label("跳过", systemImage: "forward")
-                }
-                .buttonStyle(.bordered)
-                .disabled(assetIds.count < 2)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 10)
+        ZStack {
+            Color.black.ignoresSafeArea()
 
-            TabView(selection: $currentIndex) {
-                ForEach(Array(assetIds.enumerated()), id: \.element) { index, assetId in
-                    OrganizePhotoPage(assetLocalIdentifier: assetId)
-                        .tag(index)
-                }
+            if let currentAssetId {
+                OrganizePhotoPage(assetLocalIdentifier: currentAssetId)
+                    .id(currentAssetId)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .background(Color.black)
 
-            actionBar
+            VStack(spacing: 0) {
+                sessionHeader
+                Spacer(minLength: 0)
+                actionBar
+            }
         }
     }
 
+    private var sessionHeader: some View {
+        HStack(spacing: 12) {
+            Text("\(currentIndex + 1) / \(assetIds.count)")
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(.black.opacity(0.42), in: Capsule())
+
+            ProgressView(value: Double(currentIndex + 1), total: Double(max(assetIds.count, 1)))
+                .tint(.white)
+                .frame(maxWidth: 110)
+
+            Spacer()
+
+            Button {
+                skipPhoto()
+            } label: {
+                Image(systemName: "forward.fill")
+                    .font(.headline)
+                    .frame(width: 40, height: 40)
+                    .background(.black.opacity(0.42), in: Circle())
+                    .foregroundStyle(.white)
+            }
+            .buttonStyle(.plain)
+            .disabled(assetIds.count < 2)
+            .accessibilityLabel("跳过")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+    }
+
     private var actionBar: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             if let statusMessage {
                 Text(statusMessage)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.9))
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
 
-            HStack(spacing: 10) {
+            if !categories.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(categories.prefix(8)) { category in
+                            Button {
+                                addCurrentPhoto(to: category)
+                            } label: {
+                                Label(category.name, systemImage: "folder")
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 9)
+                                    .background(.white.opacity(0.16), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.white)
+                            .disabled(currentAssetId == nil)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
+
+            HStack(spacing: 14) {
+                organizeActionButton(
+                    title: "回收站",
+                    systemImage: "trash",
+                    tint: .red
+                ) {
+                    deleteCandidate = currentAssetId
+                }
+                .disabled(currentAssetId == nil)
+
+                organizeActionButton(
+                    title: "未分类",
+                    systemImage: "tray.and.arrow.down",
+                    tint: .white
+                ) {
+                    markCurrentPhotoUncategorized()
+                }
+                .disabled(currentAssetId == nil)
+
                 Menu {
                     if categories.isEmpty {
                         Text("还没有分类")
@@ -181,45 +261,41 @@ struct OrganizePhotosView: View {
                         }
                     }
                 } label: {
-                    Label("加入分类", systemImage: "folder.badge.plus")
-                        .frame(maxWidth: .infinity)
+                    VStack(spacing: 7) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.title3.weight(.semibold))
+                            .frame(width: 46, height: 46)
+                            .background(Color.accentColor, in: Circle())
+                        Text("加入分类")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
                 .disabled(categories.isEmpty || currentAssetId == nil)
 
-                Button {
-                    markCurrentPhotoUncategorized()
-                } label: {
-                    Label("未分类", systemImage: "tray.and.arrow.down")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(currentAssetId == nil)
-            }
-
-            HStack(spacing: 10) {
-                Button {
-                    deleteCandidate = currentAssetId
-                } label: {
-                    Label("回收站", systemImage: "trash")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                .disabled(currentAssetId == nil)
-
-                Button {
+                organizeActionButton(
+                    title: "下一张",
+                    systemImage: "chevron.right",
+                    tint: .white
+                ) {
                     skipPhoto()
-                } label: {
-                    Label("下一张", systemImage: "chevron.right")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
                 .disabled(assetIds.count < 2)
             }
         }
-        .padding()
-        .background(.thinMaterial)
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 18)
+        .background(
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.72), .black.opacity(0.92)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     private func quickCountButton(_ count: Int) -> some View {
@@ -227,10 +303,37 @@ struct OrganizePhotosView: View {
             requestedCount = count
         } label: {
             Text("\(count)")
+                .font(.subheadline.monospacedDigit().weight(.semibold))
                 .frame(maxWidth: .infinity)
+                .frame(height: 36)
+                .background(
+                    Capsule()
+                        .fill(requestedCount == count ? Color.accentColor.opacity(0.16) : Color(.tertiarySystemGroupedBackground))
+                )
         }
-        .buttonStyle(.bordered)
-        .tint(requestedCount == count ? .accentColor : nil)
+        .buttonStyle(.plain)
+        .foregroundStyle(requestedCount == count ? Color.accentColor : .primary)
+    }
+
+    private func organizeActionButton(
+        title: String,
+        systemImage: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 7) {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 46, height: 46)
+                    .background(.white.opacity(0.16), in: Circle())
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(tint)
     }
 
     private func loadCategories() {

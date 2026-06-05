@@ -21,7 +21,7 @@ struct SmartCategoryModel: Identifiable, Hashable {
         case .image where creationMode == .naturalLanguage:
             return 0.05...0.40
         case .mobileclip2Image, .dinov2Image:
-            return 0.30...0.95
+            return 0.10...0.99
         case .image, .face:
             return 0.10...0.99
         }
@@ -32,17 +32,17 @@ struct SmartCategoryModel: Identifiable, Hashable {
         case .naturalLanguage:
             return "文字描述"
         case .referenceImages:
-            if matchingEmbeddingKind == .dinov2Image {
+            if matchingEmbeddingKind == .dinov2Image || matchingEmbeddingKind == .mobileclip2Image {
                 return "旧参考图片"
             }
-            return referenceMatchingMode == .fast ? "参考图片 · 快速" : "参考图片 · 精确"
+            return "参考图片"
         case .portraitReference:
             return "人脸参考"
         }
     }
 
-    var isLegacyDINOv2Category: Bool {
-        matchingEmbeddingKind == .dinov2Image
+    var isRetiredReferenceCategory: Bool {
+        matchingEmbeddingKind == .dinov2Image || matchingEmbeddingKind == .mobileclip2Image
     }
 }
 
@@ -60,16 +60,10 @@ enum CategoryCreationMode: String, CaseIterable {
 }
 
 enum ReferenceMatchingMode: String, CaseIterable {
-    case quality
     case fast
 
     var displayName: String {
-        switch self {
-        case .quality:
-            return "精确"
-        case .fast:
-            return "快速"
-        }
+        "默认"
     }
 }
 

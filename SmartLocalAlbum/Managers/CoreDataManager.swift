@@ -507,8 +507,7 @@ final class CoreDataManager: ObservableObject {
         creationMode: CategoryCreationMode,
         matchingEmbeddingKind: EmbeddingKind
     ) -> ReferenceMatchingMode {
-        guard creationMode == .referenceImages else { return .fast }
-        return matchingEmbeddingKind == .mobileclip2Image ? .quality : .fast
+        .fast
     }
 
     private static func resultModel(from entity: ClassificationResultEntity) -> ClassificationResultModel {

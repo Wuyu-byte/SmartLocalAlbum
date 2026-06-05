@@ -23,7 +23,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>SmartAlbum 只在本机读取照片用于本地分类，不上传照片。</string>
+	<string>SmartAlbum 只在本机读取照片用于整理和分类，不上传照片。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

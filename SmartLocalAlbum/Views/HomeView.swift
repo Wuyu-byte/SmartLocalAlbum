@@ -23,7 +23,7 @@ struct HomeView: View {
                 OrganizePhotosView()
             }
             .tabItem {
-                Label("整理照片", systemImage: "rectangle.stack.badge.play")
+                Label("整理", systemImage: "rectangle.stack.badge.play")
             }
 
             NavigationStack {
@@ -61,10 +61,10 @@ struct HomeView: View {
                         EmptyStateView(
                             title: "还没有分类",
                             systemImage: "rectangle.stack.badge.plus",
-                            message: "可以用文字描述，或用 1 到 10 张参考照片创建分类。"
+                            message: "用一句描述或几张参考照片，先建一个你想留下的集合。"
                         )
                     } else {
-                        Section("我的分类 🗂") {
+                        Section("我的分类") {
                             ForEach(categories) { category in
                                 CategoryRowView(
                                     category: category,
@@ -82,7 +82,7 @@ struct HomeView: View {
                 }
                 .listStyle(.insetGrouped)
             }
-            .navigationTitle("SmartAlbum 📷")
+            .navigationTitle("把相册整理成你喜欢的样子")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -132,7 +132,7 @@ struct HomeView: View {
     @ViewBuilder
     private var permissionBanner: some View {
         if photoLibraryManager.authorizationStatus == .limited {
-            Label("照片只在本机分类，不会上传；当前只可访问已授权照片。", systemImage: "info.circle")
+            Label("当前只能访问已授权照片；所有整理都在本机完成。", systemImage: "info.circle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -140,7 +140,7 @@ struct HomeView: View {
                 .padding(.vertical, 8)
                 .background(Color.yellow.opacity(0.16))
         } else if photoLibraryManager.authorizationStatus == .denied || photoLibraryManager.authorizationStatus == .restricted {
-            Label("需要相册权限；照片只在本机处理，不会上传。", systemImage: "exclamationmark.triangle")
+            Label("需要相册权限才能整理照片；照片不会上传。", systemImage: "exclamationmark.triangle")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -248,19 +248,19 @@ private struct FAQView: View {
     private let items: [(question: String, answer: String)] = [
         (
             "为什么扫描前要先创建分类？",
-            "扫描会按照你创建的分类来判断照片。先创建分类，可以避免 App 做无意义的全量计算。"
+            "扫描会按你创建的分类寻找照片。先建分类，可以让处理更快，也更贴近你的喜好。"
         ),
         (
             "文字描述和参考图片有什么区别？",
-            "文字描述适合找明确主题，比如猫、花、食物；参考图片适合找风格、人物、相似场景这类更具体的内容。"
+            "文字描述适合找明确主题，比如猫、花、食物；参考图片适合找相近人物、场景或风格。"
         ),
         (
             "匹配严格度应该怎么调？",
-            "照片太少时可以调低一点，混入不相关照片时调高一点。调整后会自动用已有特征重新分类。"
+            "结果太少时调低一点；混入不相关照片时调高一点。调整后会用已有特征重新整理。"
         ),
         (
             "移除错分照片后还会回来吗？",
-            "不会。你在分类页移除的照片会记为这个分类的排除项，后续普通扫描会跳过它。"
+            "不会。你在分类页移除的照片会记为这个分类的排除项，之后扫描会跳过它。"
         ),
         (
             "扫描会不会上传照片？",
@@ -268,7 +268,7 @@ private struct FAQView: View {
         ),
         (
             "回收站会删除系统相册里的照片吗？",
-            "移入回收站只会先从 App 里隐藏，不会立刻删除原图；在回收站里永久删除或清空回收站时，才会从系统照片库删除本机照片，并且 iOS 会弹出系统确认。"
+            "移入回收站只会先从 App 里隐藏，不会立刻删除原图；永久删除或清空回收站时，才会从系统照片库删除，并且 iOS 会弹出系统确认。"
         )
     ]
 
@@ -347,12 +347,12 @@ private struct CategoryRowView: View {
                         }
                     }
                 )
-                .disabled(category.isLegacyDINOv2Category)
+                .disabled(category.isRetiredReferenceCategory)
             }
 
-            Text(category.isLegacyDINOv2Category
-                ? "这个旧分类不会再参与扫描，请用参考图片重新创建。"
-                : "越高越准但照片更少；越低照片更多但可能混入不相关内容。")
+            Text(category.isRetiredReferenceCategory
+                ? "这个旧参考分类不会再参与扫描，请重新创建。"
+                : "数值越高，结果越谨慎；数值越低，照片更多。")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
@@ -360,8 +360,8 @@ private struct CategoryRowView: View {
     }
 
     private var categoryDescription: String {
-        if category.isLegacyDINOv2Category {
-            return "旧版参考分类 · 请重新创建"
+        if category.isRetiredReferenceCategory {
+            return "旧参考分类 · 请重新创建"
         }
 
         switch category.creationMode {

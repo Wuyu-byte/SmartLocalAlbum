@@ -7,7 +7,6 @@ struct CreateCategoryView: View {
 
     @State private var name = ""
     @State private var classificationMode: CreateCategoryMode = .naturalLanguage
-    @State private var referenceMatchingMode: ReferenceMatchingMode = .fast
     @State private var promptText = ""
     @State private var threshold = Double(SmartCategoryManager.naturalLanguageDefaultThreshold)
     @State private var isPortrait = false
@@ -16,7 +15,6 @@ struct CreateCategoryView: View {
     @State private var sampleAssetIds: [String] = []
     @State private var isCreating = false
     @State private var errorMessage: String?
-    @State private var isShowingPreciseModeTip = false
 
     private var canCreate: Bool {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isCreating else {
@@ -43,7 +41,7 @@ struct CreateCategoryView: View {
         case .naturalLanguage:
             return 0.05...0.40
         case .referenceImages:
-            return isPortrait || referenceMatchingMode == .fast ? 0.10...0.99 : 0.30...0.95
+            return 0.10...0.99
         }
     }
 
@@ -54,15 +52,13 @@ struct CreateCategoryView: View {
         case .referenceImages:
             return Double(isPortrait
                 ? SmartCategoryManager.portraitDefaultThreshold
-                : (referenceMatchingMode == .quality
-                    ? SmartCategoryManager.referenceQualityDefaultThreshold
-                    : SmartCategoryManager.referenceFastDefaultThreshold))
+                : SmartCategoryManager.referenceFastDefaultThreshold)
         }
     }
 
     var body: some View {
         Form {
-            Section("分类 🏷") {
+            Section("分类") {
                 TextField("分类名称", text: $name)
                     .textInputAutocapitalization(.words)
 
@@ -80,7 +76,7 @@ struct CreateCategoryView: View {
                             .foregroundStyle(.secondary)
                     }
                     Slider(value: $threshold, in: thresholdRange, step: 0.01)
-                    Text("越高越准但照片更少；越低照片更多但可能混入不相关内容。这里的数值是模型判断照片是否属于该分类的最低分数。")
+                    Text("数值越高，结果越谨慎；数值越低，照片更多，也可能混入不相关内容。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -91,15 +87,7 @@ struct CreateCategoryView: View {
                     }
 
                     if !isPortrait {
-                        Picker("图片分类模式", selection: $referenceMatchingMode) {
-                            Text("快速").tag(ReferenceMatchingMode.fast)
-                            Text("精确").tag(ReferenceMatchingMode.quality)
-                        }
-                        .pickerStyle(.segmented)
-
-                        Text(referenceMatchingMode == .quality
-                            ? "精确模式会更认真地比较参考照片，首次创建和扫描可能更慢。"
-                            : "快速模式创建和扫描更轻快，适合大多数日常分类。")
+                        Text("参考照片会在本机生成特征，用来寻找主题、风格或场景相近的照片。")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -121,7 +109,7 @@ struct CreateCategoryView: View {
                         }
                 }
             } else {
-                Section("参考照片 🧩") {
+                Section("参考照片") {
                     PhotosPicker(
                         selection: $selectedItems,
                         maxSelectionCount: 10,
@@ -181,7 +169,7 @@ struct CreateCategoryView: View {
                             ProgressView()
                         }
                         Label(
-                            isCreating ? "正在创建分类…" : "创建分类 ✨",
+                            isCreating ? "正在创建分类..." : "创建分类",
                             systemImage: isCreating ? "hourglass" : "checkmark.circle"
                         )
                     }
@@ -203,12 +191,6 @@ struct CreateCategoryView: View {
         .onChange(of: isPortrait) { _ in
             threshold = defaultThreshold
         }
-        .onChange(of: referenceMatchingMode) { _ in
-            threshold = defaultThreshold
-            if referenceMatchingMode == .quality {
-                isShowingPreciseModeTip = true
-            }
-        }
         .onChange(of: selectedItems) { newItems in
             Task { await loadSelectedPhotos(newItems) }
         }
@@ -219,11 +201,6 @@ struct CreateCategoryView: View {
             Button("好", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
-        }
-        .alert("精确模式提醒", isPresented: $isShowingPreciseModeTip) {
-            Button("知道了", role: .cancel) {}
-        } message: {
-            Text("精确模式会调用更大的本地 AI 模型，处理时手机可能会短暂发热、耗电也会多一点。建议只在需要更细致分类时使用。")
         }
     }
 
@@ -274,8 +251,7 @@ struct CreateCategoryView: View {
                     sampleImages: sampleImages,
                     sampleAssetIds: sampleAssetIds,
                     threshold: Float(threshold),
-                    isPortrait: isPortrait,
-                    referenceMatchingMode: referenceMatchingMode
+                    isPortrait: isPortrait
                 )
             }
             dismiss()
