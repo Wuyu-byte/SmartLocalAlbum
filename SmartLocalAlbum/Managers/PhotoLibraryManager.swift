@@ -23,6 +23,10 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         authorizationStatus == .authorized || authorizationStatus == .limited
     }
 
+    func refreshAuthorizationStatus() {
+        authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    }
+
     nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
         Task { @MainActor in
             guard let embeddings = try? coreDataManager.fetchAllPhotoEmbeddingModels() else { return }
@@ -43,9 +47,24 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
     }
 
     func requestAuthorization() async -> PHAuthorizationStatus {
-        let status = await withCheckedContinuation { continuation in
-            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+        let status = await withCheckedContinuation { (continuation: CheckedContinuation<PHAuthorizationStatus, Never>) in
+            let lock = NSLock()
+            var didResume = false
+
+            func resume(_ status: PHAuthorizationStatus) {
+                lock.lock()
+                defer { lock.unlock() }
+                guard !didResume else { return }
+                didResume = true
                 continuation.resume(returning: status)
+            }
+
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
+                resume(status)
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                resume(PHPhotoLibrary.authorizationStatus(for: .readWrite))
             }
         }
         authorizationStatus = status
@@ -77,20 +96,19 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         let status = hasReadAccess ? authorizationStatus : await requestAuthorization()
         guard status == .authorized || status == .limited else { return [] }
 
-        let excluded = excludedAssetIds
-        return await Task.detached(priority: .userInitiated) {
-            Self.sampleImageAssetIdentifiers(limit: limit, excluding: excluded)
-        }.value
+        return Self.randomLocalImageAssetIdentifiers(limit: limit, excluding: excludedAssetIds)
     }
 
-    nonisolated private static func sampleImageAssetIdentifiers(
+    nonisolated static func randomLocalImageAssetIdentifiers(
         limit: Int,
-        excluding excludedAssetIds: Set<String>
+        excluding excludedAssetIds: Set<String> = []
     ) -> [String] {
+        guard limit > 0 else { return [] }
+
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard status == .authorized || status == .limited else { return [] }
+
         let options = PHFetchOptions()
-        options.sortDescriptors = [
-            NSSortDescriptor(key: "creationDate", ascending: false)
-        ]
         options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
 
         let result = PHAsset.fetchAssets(with: options)
@@ -100,25 +118,8 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         selected.reserveCapacity(min(limit, result.count))
         var sampledIndexes = Set<Int>()
 
-        let randomAttemptLimit = min(result.count, max(limit * 20, 200))
-        while selected.count < limit && sampledIndexes.count < randomAttemptLimit {
+        while selected.count < limit && sampledIndexes.count < result.count {
             let index = Int.random(in: 0..<result.count)
-            guard sampledIndexes.insert(index).inserted else { continue }
-
-            let assetId = result.object(at: index).localIdentifier
-            if !excludedAssetIds.contains(assetId) {
-                selected.append(assetId)
-            }
-        }
-
-        guard selected.count < limit, sampledIndexes.count < result.count else {
-            return selected
-        }
-
-        let startIndex = Int.random(in: 0..<result.count)
-        for offset in 0..<result.count {
-            if selected.count >= limit { break }
-            let index = (startIndex + offset) % result.count
             guard sampledIndexes.insert(index).inserted else { continue }
 
             let assetId = result.object(at: index).localIdentifier
@@ -257,19 +258,26 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
             options.isSynchronous = false
             options.isNetworkAccessAllowed = false
 
+            let lock = NSLock()
             var didResume = false
-            imageManager.requestImage(
+            var requestId: PHImageRequestID = PHInvalidImageRequestID
+            let resume: (UIImage?) -> Void = { image in
+                lock.lock()
+                defer { lock.unlock() }
+                guard !didResume else { return }
+                didResume = true
+                continuation.resume(returning: image)
+            }
+
+            requestId = imageManager.requestImage(
                 for: asset,
                 targetSize: targetSize,
                 contentMode: contentMode,
                 options: options
             ) { image, info in
-                guard !didResume else { return }
-
                 let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) == true
                 if let image, !waitsForFinalImage || !isDegraded {
-                    didResume = true
-                    continuation.resume(returning: image)
+                    resume(image)
                     return
                 }
 
@@ -277,9 +285,13 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
                 let hasError = info?[PHImageErrorKey] != nil
                 let isInCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
                 if cancelled || hasError || isInCloud || (image == nil && !isDegraded) {
-                    didResume = true
-                    continuation.resume(returning: nil)
+                    resume(nil)
                 }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak imageManager] in
+                imageManager?.cancelImageRequest(requestId)
+                resume(nil)
             }
         }
     }

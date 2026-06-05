@@ -120,9 +120,9 @@ struct HomeView: View {
                 Text(errorMessage ?? "")
             }
             .task {
-                _ = await photoLibraryManager.requestAuthorization()
+                photoLibraryManager.refreshAuthorizationStatus()
                 loadCategories()
-                scanManager.runWeeklyAutoScanIfNeeded(hasCategories: !categories.isEmpty)
+                runAutoScanIfReady()
 
                 if !UserDefaults.standard.bool(forKey: hasSeenOnboardingKey) {
                     isShowingOnboarding = true
@@ -130,8 +130,9 @@ struct HomeView: View {
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
+                    photoLibraryManager.refreshAuthorizationStatus()
                     loadCategories()
-                    scanManager.runWeeklyAutoScanIfNeeded(hasCategories: !categories.isEmpty)
+                    runAutoScanIfReady()
                 }
             }
             .onChange(of: scanManager.reclassifyCount) { _ in
@@ -241,6 +242,11 @@ struct HomeView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func runAutoScanIfReady() {
+        guard photoLibraryManager.hasReadAccess else { return }
+        scanManager.runWeeklyAutoScanIfNeeded(hasCategories: !categories.isEmpty)
     }
 
     private func updateThreshold(categoryId: UUID, threshold: Float) {

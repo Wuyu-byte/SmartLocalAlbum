@@ -1,4 +1,5 @@
 import CoreLocation
+import Photos
 import SwiftUI
 import UIKit
 
@@ -34,7 +35,7 @@ struct OrganizePhotosView: View {
             if !assetIds.isEmpty {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        Task { await startSession() }
+                        startSession()
                     } label: {
                         Label("重抽", systemImage: "shuffle")
                     }
@@ -114,7 +115,7 @@ struct OrganizePhotosView: View {
                 )
 
                 Button {
-                    Task { await startSession() }
+                    startSession()
                 } label: {
                     HStack {
                         if isLoading {
@@ -150,11 +151,14 @@ struct OrganizePhotosView: View {
 
     private var organizerView: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color(.systemGroupedBackground).ignoresSafeArea()
 
             if let currentAssetId {
-                OrganizePhotoPage(assetLocalIdentifier: currentAssetId)
-                    .id(currentAssetId)
+                OrganizePhotoPage(
+                    assetLocalIdentifier: currentAssetId,
+                    onSkip: { skipPhoto() }
+                )
+                .id(currentAssetId)
             }
 
             VStack(spacing: 0) {
@@ -179,13 +183,13 @@ struct OrganizePhotosView: View {
         HStack(spacing: 12) {
             Text("\(currentIndex + 1) / \(assetIds.count)")
                 .font(.subheadline.monospacedDigit().weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(.black.opacity(0.42), in: Capsule())
+                .background(Color(.secondarySystemGroupedBackground), in: Capsule())
 
             ProgressView(value: Double(currentIndex + 1), total: Double(max(assetIds.count, 1)))
-                .tint(.white)
+                .tint(Color.accentColor)
                 .frame(maxWidth: 110)
 
             Spacer()
@@ -196,8 +200,8 @@ struct OrganizePhotosView: View {
                 Image(systemName: "forward.fill")
                     .font(.headline)
                     .frame(width: 40, height: 40)
-                    .background(.black.opacity(0.42), in: Circle())
-                    .foregroundStyle(.white)
+                    .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                    .foregroundStyle(.primary)
             }
             .buttonStyle(.plain)
             .disabled(assetIds.count < 2)
@@ -212,7 +216,7 @@ struct OrganizePhotosView: View {
             if let statusMessage {
                 Text(statusMessage)
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.9))
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
             }
@@ -229,10 +233,10 @@ struct OrganizePhotosView: View {
                                     .lineLimit(1)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 9)
-                                    .background(.white.opacity(0.16), in: Capsule())
+                                    .background(Color.accentColor.opacity(0.12), in: Capsule())
                             }
                             .buttonStyle(.plain)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.accentColor)
                             .disabled(currentAssetId == nil)
                         }
                     }
@@ -253,7 +257,7 @@ struct OrganizePhotosView: View {
                 organizeActionButton(
                     title: "未分类",
                     systemImage: "tray.and.arrow.down",
-                    tint: .white
+                    tint: .primary
                 ) {
                     markCurrentPhotoUncategorized()
                 }
@@ -283,13 +287,13 @@ struct OrganizePhotosView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.accentColor)
                 .disabled(categories.isEmpty || currentAssetId == nil)
 
                 organizeActionButton(
                     title: "下一张",
                     systemImage: "chevron.right",
-                    tint: .white
+                    tint: .primary
                 ) {
                     skipPhoto()
                 }
@@ -299,14 +303,7 @@ struct OrganizePhotosView: View {
         .padding(.horizontal, 18)
         .padding(.top, 16)
         .padding(.bottom, 18)
-        .background(
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.72), .black.opacity(0.92)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(edges: .bottom)
-        )
+        .background(.regularMaterial)
     }
 
     private func quickCountButton(_ count: Int) -> some View {
@@ -337,7 +334,7 @@ struct OrganizePhotosView: View {
                 Image(systemName: systemImage)
                     .font(.title3.weight(.semibold))
                     .frame(width: 46, height: 46)
-                    .background(.white.opacity(0.16), in: Circle())
+                    .background(Color(.secondarySystemGroupedBackground), in: Circle())
                 Text(title)
                     .font(.caption.weight(.semibold))
             }
@@ -355,19 +352,32 @@ struct OrganizePhotosView: View {
         }
     }
 
-    private func startSession() async {
-        isLoading = true
-        defer { isLoading = false }
+    private func startSession() {
+        guard !isLoading else { return }
 
-        let trashedAssetIds = (try? coreDataManager.fetchTrashedAssetIdSet()) ?? []
-        let randomIds = await photoLibraryManager.randomImageAssetIdentifiers(
-            limit: requestedCount,
-            excluding: trashedAssetIds
-        )
-        assetIds = randomIds
-        currentIndex = 0
-        statusMessage = randomIds.isEmpty ? "没有拿到可整理的照片。请确认相册权限，或在有限权限里添加更多照片。" : nil
-        loadCategories()
+        let authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        guard authorizationStatus == .authorized || authorizationStatus == .limited else {
+            assetIds = []
+            currentIndex = 0
+            statusMessage = "请先允许访问照片，再开始整理。"
+            return
+        }
+
+        let count = requestedCount
+        isLoading = true
+        statusMessage = "正在读取本机照片..."
+
+        Task.detached(priority: .userInitiated) {
+            let randomIds = PhotoLibraryManager.randomLocalImageAssetIdentifiers(limit: count)
+
+            await MainActor.run {
+                assetIds = randomIds
+                currentIndex = 0
+                statusMessage = randomIds.isEmpty ? "没有拿到可整理的照片。请确认相册权限，或在有限权限里添加更多照片。" : nil
+                loadCategories()
+                isLoading = false
+            }
+        }
     }
 
     private func addCurrentPhoto(to category: SmartCategoryModel) {
@@ -434,24 +444,28 @@ private struct OrganizePhotoPage: View {
     @EnvironmentObject private var coreDataManager: CoreDataManager
 
     let assetLocalIdentifier: String
+    let onSkip: () -> Void
 
     @State private var image: UIImage?
     @State private var creationDate: Date?
     @State private var locationName: String?
     @State private var categoryNames: [String] = []
+    @State private var loadFailed = false
 
     var body: some View {
         ZStack {
-            Color.black
+            Color(.secondarySystemGroupedBackground)
 
             if let image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if loadFailed {
+                loadFailedView
             } else {
                 ProgressView()
-                    .tint(.white)
+                    .tint(Color.accentColor)
             }
 
             if creationDate != nil || locationName != nil || !categoryNames.isEmpty {
@@ -460,6 +474,7 @@ private struct OrganizePhotoPage: View {
         }
         .task(id: assetLocalIdentifier) {
             image = nil
+            loadFailed = false
             creationDate = nil
             locationName = nil
             categoryNames = []
@@ -468,10 +483,33 @@ private struct OrganizePhotoPage: View {
             async let metadata = loadMetadata()
 
             image = await loadedImage
+            loadFailed = (image == nil)
             let (date, location, categories) = await metadata
             creationDate = date
             locationName = location
             categoryNames = categories
+        }
+    }
+
+    private var loadFailedView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "photo.badge.exclamationmark")
+                .font(.system(size: 44, weight: .light))
+                .foregroundStyle(.secondary)
+            Text("这张照片无法读取")
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+            Button {
+                onSkip()
+            } label: {
+                Label("跳过", systemImage: "forward.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(Color.accentColor.opacity(0.12), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.accentColor)
         }
     }
 
@@ -498,8 +536,8 @@ private struct OrganizePhotoPage: View {
             }
         }
         .padding(10)
-        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-        .foregroundStyle(.white)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .padding(16)
     }
