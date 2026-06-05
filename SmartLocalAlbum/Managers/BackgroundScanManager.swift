@@ -1,5 +1,7 @@
 import BackgroundTasks
 import Foundation
+import Photos
+import UIKit
 
 @MainActor
 final class BackgroundScanManager: ObservableObject {
@@ -29,7 +31,9 @@ final class BackgroundScanManager: ObservableObject {
             using: nil
         ) { [weak self] task in
             guard let self, let task = task as? BGProcessingTask else { return }
-            self.handleBackgroundScan(task: task)
+            Task { @MainActor in
+                self.handleBackgroundScan(task: task)
+            }
         }
     }
 

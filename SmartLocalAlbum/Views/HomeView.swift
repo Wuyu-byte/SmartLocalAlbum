@@ -59,11 +59,6 @@ struct HomeView: View {
                         } label: {
                             Label("未分类", systemImage: "tray")
                         }
-                        NavigationLink {
-                            DuplicatePhotosView()
-                        } label: {
-                            Label("重复照片", systemImage: "photo.on.rectangle.angled")
-                        }
                     }
 
                     if categories.isEmpty {

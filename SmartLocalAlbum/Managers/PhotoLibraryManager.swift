@@ -2,7 +2,7 @@ import Photos
 import UIKit
 
 @MainActor
-final class PhotoLibraryManager: ObservableObject, PHPhotoLibraryChangeObserver {
+final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
     @Published private(set) var authorizationStatus: PHAuthorizationStatus
 
     private let imageManager = PHCachingImageManager()
@@ -11,7 +11,12 @@ final class PhotoLibraryManager: ObservableObject, PHPhotoLibraryChangeObserver 
     init(coreDataManager: CoreDataManager) {
         self.coreDataManager = coreDataManager
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        super.init()
         PHPhotoLibrary.shared().register(self)
+    }
+
+    deinit {
+        PHPhotoLibrary.shared().unregisterChangeObserver(self)
     }
 
     var hasReadAccess: Bool {
@@ -74,14 +79,55 @@ final class PhotoLibraryManager: ObservableObject, PHPhotoLibraryChangeObserver 
 
         let excluded = excludedAssetIds
         return await Task.detached(priority: .userInitiated) {
-            Array(
-                Self.enumerateImageAssets()
-                    .map(\.localIdentifier)
-                    .filter { !excluded.contains($0) }
-                    .shuffled()
-                    .prefix(limit)
-            )
+            Self.sampleImageAssetIdentifiers(limit: limit, excluding: excluded)
         }.value
+    }
+
+    nonisolated private static func sampleImageAssetIdentifiers(
+        limit: Int,
+        excluding excludedAssetIds: Set<String>
+    ) -> [String] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [
+            NSSortDescriptor(key: "creationDate", ascending: false)
+        ]
+        options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+
+        let result = PHAsset.fetchAssets(with: options)
+        guard result.count > 0 else { return [] }
+
+        var selected: [String] = []
+        selected.reserveCapacity(min(limit, result.count))
+        var sampledIndexes = Set<Int>()
+
+        let randomAttemptLimit = min(result.count, max(limit * 20, 200))
+        while selected.count < limit && sampledIndexes.count < randomAttemptLimit {
+            let index = Int.random(in: 0..<result.count)
+            guard sampledIndexes.insert(index).inserted else { continue }
+
+            let assetId = result.object(at: index).localIdentifier
+            if !excludedAssetIds.contains(assetId) {
+                selected.append(assetId)
+            }
+        }
+
+        guard selected.count < limit, sampledIndexes.count < result.count else {
+            return selected
+        }
+
+        let startIndex = Int.random(in: 0..<result.count)
+        for offset in 0..<result.count {
+            if selected.count >= limit { break }
+            let index = (startIndex + offset) % result.count
+            guard sampledIndexes.insert(index).inserted else { continue }
+
+            let assetId = result.object(at: index).localIdentifier
+            if !excludedAssetIds.contains(assetId) {
+                selected.append(assetId)
+            }
+        }
+
+        return selected
     }
 
     func asset(localIdentifier: String) -> PHAsset? {
@@ -229,7 +275,8 @@ final class PhotoLibraryManager: ObservableObject, PHPhotoLibraryChangeObserver 
 
                 let cancelled = (info?[PHImageCancelledKey] as? Bool) == true
                 let hasError = info?[PHImageErrorKey] != nil
-                if cancelled || hasError {
+                let isInCloud = (info?[PHImageResultIsInCloudKey] as? Bool) == true
+                if cancelled || hasError || isInCloud || (image == nil && !isDegraded) {
                     didResume = true
                     continuation.resume(returning: nil)
                 }

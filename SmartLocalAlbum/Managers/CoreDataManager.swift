@@ -365,7 +365,9 @@ final class CoreDataManager: ObservableObject {
 
     func moveToUncategorized(assetLocalIdentifier: String) throws {
         try restorePhotoFromTrash(assetLocalIdentifier: assetLocalIdentifier)
-        for categoryId in try fetchResultCategoryIds(assetLocalIdentifier: assetLocalIdentifier) {
+        let existingCategoryIds = Set(try fetchCategoryModels().map(\.id))
+        let matchedCategoryIds = try fetchResultCategoryIds(assetLocalIdentifier: assetLocalIdentifier)
+        for categoryId in existingCategoryIds.union(matchedCategoryIds) {
             try upsertExclusion(assetLocalIdentifier: assetLocalIdentifier, categoryId: categoryId)
         }
         try deleteResults(assetLocalIdentifier: assetLocalIdentifier)

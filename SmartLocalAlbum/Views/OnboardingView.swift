@@ -7,7 +7,7 @@ struct OnboardingView: View {
         (
             "rectangle.stack.badge.plus",
             "创建分类",
-            "用一句文字描述（如"猫"、"海边"）或几张参考照片，告诉 App 你想找什么样的照片。"
+            "用一句文字描述（如“猫”、“海边”）或几张参考照片，告诉 App 你想找什么样的照片。"
         ),
         (
             "photo.stack",
@@ -22,7 +22,7 @@ struct OnboardingView: View {
         (
             "rectangle.stack.badge.play",
             "手动整理",
-            "用"整理"功能逐张查看随机抽出的照片，决定放入某个分类、保留为未分类或移入回收站。"
+            "用“整理”功能逐张查看随机抽出的照片，决定放入某个分类、保留为未分类或移入回收站。"
         ),
         (
             "trash",

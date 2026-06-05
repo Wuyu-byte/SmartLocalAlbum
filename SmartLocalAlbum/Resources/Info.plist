@@ -24,6 +24,10 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SmartAlbum 只在本机读取照片用于整理和分类，不上传照片。</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>processing</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -37,6 +37,8 @@
 		100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */; };
 		100000000000000000000132 /* Views/OrganizePhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000034 /* Views/OrganizePhotosView.swift */; };
 		100000000000000000000133 /* Views/RecycleBinView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000035 /* Views/RecycleBinView.swift */; };
+		100000000000000000000134 /* Managers/BackgroundScanManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000036 /* Managers/BackgroundScanManager.swift */; };
+		100000000000000000000136 /* Views/OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000038 /* Views/OnboardingView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -72,6 +74,8 @@
 		100000000000000000000032 /* Services/LazyEmbeddingExtractors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LazyEmbeddingExtractors.swift; sourceTree = "<group>"; };
 		100000000000000000000034 /* Views/OrganizePhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/OrganizePhotosView.swift; sourceTree = "<group>"; };
 		100000000000000000000035 /* Views/RecycleBinView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/RecycleBinView.swift; sourceTree = "<group>"; };
+		100000000000000000000036 /* Managers/BackgroundScanManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Managers/BackgroundScanManager.swift; sourceTree = "<group>"; };
+		100000000000000000000038 /* Views/OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/OnboardingView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -112,6 +116,7 @@
 				100000000000000000000010 /* Managers/CoreDataManager.swift */,
 				100000000000000000000011 /* Managers/SmartCategoryManager.swift */,
 				100000000000000000000012 /* Managers/ScanManager.swift */,
+				100000000000000000000036 /* Managers/BackgroundScanManager.swift */,
 				100000000000000000000013 /* Views/HomeView.swift */,
 				100000000000000000000014 /* Views/CreateCategoryView.swift */,
 				100000000000000000000015 /* Views/CategoryDetailView.swift */,
@@ -119,6 +124,7 @@
 				100000000000000000000017 /* Views/PhotoPreviewView.swift */,
 				100000000000000000000034 /* Views/OrganizePhotosView.swift */,
 				100000000000000000000035 /* Views/RecycleBinView.swift */,
+				100000000000000000000038 /* Views/OnboardingView.swift */,
 				100000000000000000000018 /* Views/EmptyStateView.swift */,
 				100000000000000000000021 /* Views/ShareSheetView.swift */,
 				100000000000000000000019 /* Resources/Info.plist */,
@@ -237,6 +243,8 @@
 				100000000000000000000124 /* Services/MobileCLIPTextEmbeddingExtractor.swift in Sources */,
 				100000000000000000000126 /* Resources/Models/mobileclip_s2_text.mlpackage in Sources */,
 				100000000000000000000130 /* Services/LazyEmbeddingExtractors.swift in Sources */,
+				100000000000000000000134 /* Managers/BackgroundScanManager.swift in Sources */,
+				100000000000000000000136 /* Views/OnboardingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
