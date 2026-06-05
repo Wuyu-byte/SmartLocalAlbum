@@ -4,11 +4,12 @@ import SwiftUI
 struct CreateCategoryView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var categoryManager: SmartCategoryManager
+    @EnvironmentObject private var scanManager: ScanManager
 
     @State private var name = ""
-    @State private var classificationMode: CreateCategoryMode = .naturalLanguage
+    @State private var classificationMode: CreateCategoryMode = .referenceImages
     @State private var promptText = ""
-    @State private var threshold = Double(SmartCategoryManager.naturalLanguageDefaultThreshold)
+    @State private var threshold = Double(SmartCategoryManager.referenceFastDefaultThreshold)
     @State private var isPortrait = false
     @State private var selectedItems: [PhotosPickerItem] = []
     @State private var sampleImages: [UIImage] = []
@@ -63,8 +64,8 @@ struct CreateCategoryView: View {
                     .textInputAutocapitalization(.words)
 
                 Picker("分类方式", selection: $classificationMode) {
-                    Text("文字描述").tag(CreateCategoryMode.naturalLanguage)
                     Text("参考图片").tag(CreateCategoryMode.referenceImages)
+                    Text("文字描述").tag(CreateCategoryMode.naturalLanguage)
                 }
                 .pickerStyle(.segmented)
 
@@ -239,12 +240,6 @@ struct CreateCategoryView: View {
 
         do {
             switch classificationMode {
-            case .naturalLanguage:
-                _ = try await categoryManager.createNaturalLanguageCategory(
-                    name: name,
-                    promptText: promptText,
-                    threshold: Float(threshold)
-                )
             case .referenceImages:
                 _ = try await categoryManager.createReferenceImageCategory(
                     name: name,
@@ -253,7 +248,14 @@ struct CreateCategoryView: View {
                     threshold: Float(threshold),
                     isPortrait: isPortrait
                 )
+            case .naturalLanguage:
+                _ = try await categoryManager.createNaturalLanguageCategory(
+                    name: name,
+                    promptText: promptText,
+                    threshold: Float(threshold)
+                )
             }
+            scanManager.reclassifySavedEmbeddings()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -262,6 +264,6 @@ struct CreateCategoryView: View {
 }
 
 private enum CreateCategoryMode: Hashable {
-    case naturalLanguage
     case referenceImages
+    case naturalLanguage
 }

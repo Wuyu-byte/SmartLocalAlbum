@@ -82,7 +82,7 @@ struct HomeView: View {
                 }
                 .listStyle(.insetGrouped)
             }
-            .navigationTitle("把相册整理成你喜欢的样子")
+            .navigationTitle("智能整理相册")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
