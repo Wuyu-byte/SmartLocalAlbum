@@ -7,10 +7,14 @@ struct HomeView: View {
     @EnvironmentObject private var categoryManager: SmartCategoryManager
     @EnvironmentObject private var photoLibraryManager: PhotoLibraryManager
     @EnvironmentObject private var scanManager: ScanManager
+    @EnvironmentObject private var backgroundScanManager: BackgroundScanManager
 
     @State private var categories: [SmartCategoryModel] = []
     @State private var isShowingCreateCategory = false
+    @State private var isShowingOnboarding = false
     @State private var errorMessage: String?
+
+    private let hasSeenOnboardingKey = "SmartLocalAlbum.hasSeenOnboarding"
 
     var body: some View {
         TabView {
@@ -54,6 +58,11 @@ struct HomeView: View {
                             UncategorizedPhotosView()
                         } label: {
                             Label("未分类", systemImage: "tray")
+                        }
+                        NavigationLink {
+                            DuplicatePhotosView()
+                        } label: {
+                            Label("重复照片", systemImage: "photo.on.rectangle.angled")
                         }
                     }
 
@@ -119,12 +128,29 @@ struct HomeView: View {
                 _ = await photoLibraryManager.requestAuthorization()
                 loadCategories()
                 scanManager.runWeeklyAutoScanIfNeeded(hasCategories: !categories.isEmpty)
+
+                if !UserDefaults.standard.bool(forKey: hasSeenOnboardingKey) {
+                    isShowingOnboarding = true
+                }
             }
             .onChange(of: scenePhase) { phase in
                 if phase == .active {
                     loadCategories()
                     scanManager.runWeeklyAutoScanIfNeeded(hasCategories: !categories.isEmpty)
                 }
+            }
+            .onChange(of: scanManager.reclassifyCount) { _ in
+                loadCategories()
+            }
+            .onChange(of: scanManager.progress.isScanning) { isScanning in
+                if !isScanning && scanManager.progress.message.contains("完成") {
+                    backgroundScanManager.scheduleBackgroundScan()
+                }
+            }
+            .sheet(isPresented: $isShowingOnboarding) {
+                UserDefaults.standard.set(true, forKey: hasSeenOnboardingKey)
+            } content: {
+                OnboardingView()
             }
         }
     }

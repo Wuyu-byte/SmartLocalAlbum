@@ -2,17 +2,39 @@ import Photos
 import UIKit
 
 @MainActor
-final class PhotoLibraryManager: ObservableObject {
+final class PhotoLibraryManager: ObservableObject, PHPhotoLibraryChangeObserver {
     @Published private(set) var authorizationStatus: PHAuthorizationStatus
 
     private let imageManager = PHCachingImageManager()
+    private let coreDataManager: CoreDataManager
 
-    init() {
+    init(coreDataManager: CoreDataManager) {
+        self.coreDataManager = coreDataManager
         authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        PHPhotoLibrary.shared().register(self)
     }
 
     var hasReadAccess: Bool {
         authorizationStatus == .authorized || authorizationStatus == .limited
+    }
+
+    nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
+        Task { @MainActor in
+            guard let embeddings = try? coreDataManager.fetchAllPhotoEmbeddingModels() else { return }
+            let knownIds = Set(embeddings.map(\.assetLocalIdentifier))
+            guard !knownIds.isEmpty else { return }
+
+            let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(knownIds), options: nil)
+            var existingIds = Set<String>()
+            result.enumerateObjects { asset, _, _ in
+                existingIds.insert(asset.localIdentifier)
+            }
+
+            let staleIds = knownIds.subtracting(existingIds)
+            for assetId in staleIds {
+                try? coreDataManager.deletePhotoData(assetLocalIdentifier: assetId)
+            }
+        }
     }
 
     func requestAuthorization() async -> PHAuthorizationStatus {
@@ -25,7 +47,7 @@ final class PhotoLibraryManager: ObservableObject {
         return status
     }
 
-    func fetchImageAssets() -> [PHAsset] {
+    nonisolated static func enumerateImageAssets() -> [PHAsset] {
         let options = PHFetchOptions()
         options.sortDescriptors = [
             NSSortDescriptor(key: "creationDate", ascending: false)
@@ -41,18 +63,25 @@ final class PhotoLibraryManager: ObservableObject {
         return assets
     }
 
+    func fetchImageAssets() -> [PHAsset] {
+        Self.enumerateImageAssets()
+    }
+
     func randomImageAssetIdentifiers(limit: Int, excluding excludedAssetIds: Set<String> = []) async -> [String] {
         guard limit > 0 else { return [] }
         let status = hasReadAccess ? authorizationStatus : await requestAuthorization()
         guard status == .authorized || status == .limited else { return [] }
 
-        return Array(
-            fetchImageAssets()
-                .map(\.localIdentifier)
-                .filter { !excludedAssetIds.contains($0) }
-                .shuffled()
-                .prefix(limit)
-        )
+        let excluded = excludedAssetIds
+        return await Task.detached(priority: .userInitiated) {
+            Array(
+                Self.enumerateImageAssets()
+                    .map(\.localIdentifier)
+                    .filter { !excluded.contains($0) }
+                    .shuffled()
+                    .prefix(limit)
+            )
+        }.value
     }
 
     func asset(localIdentifier: String) -> PHAsset? {

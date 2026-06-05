@@ -5,7 +5,9 @@ import UIKit
 @MainActor
 final class ScanManager: ObservableObject {
     @Published private(set) var progress = ScanProgress()
+    @Published private(set) var reclassifyCount: Int = 0
 
+    static let bgScanProgressKey = "SmartLocalAlbum.bgScan.lastProcessedIndex"
     private let weeklyAutoScanKey = "SmartLocalAlbum.lastWeeklyAutoScanAt"
     private let weeklyAutoScanInterval: TimeInterval = 7 * 24 * 60 * 60
     private let photoLibraryManager: PhotoLibraryManager
@@ -90,8 +92,10 @@ final class ScanManager: ObservableObject {
 
             let trashedAssetIds = try coreDataManager.fetchTrashedAssetIdSet()
             let exclusionMap = try coreDataManager.fetchCategoryExclusionMap()
-            let assets = photoLibraryManager.fetchImageAssets()
-                .filter { !trashedAssetIds.contains($0.localIdentifier) }
+            let allAssets = await Task.detached(priority: .userInitiated) {
+                PhotoLibraryManager.enumerateImageAssets()
+            }.value
+            let assets = allAssets.filter { !trashedAssetIds.contains($0.localIdentifier) }
             progress = ScanProgress(
                 isScanning: true,
                 processed: 0,
@@ -145,15 +149,17 @@ final class ScanManager: ObservableObject {
                     excludedCategoryIds: exclusionMap[assetId] ?? []
                 )
 
-                progress.processed = index + 1
-                progress.message = "扫描中 \(index + 1) / \(assets.count)"
+                progress = ScanProgress(
+                    isScanning: true,
+                    processed: index + 1,
+                    total: assets.count,
+                    message: "扫描中 \(index + 1) / \(assets.count)"
+                )
             }
 
-            progress.isScanning = false
-            progress.message = "扫描完成 ✅"
+            progress = ScanProgress(isScanning: false, message: "扫描完成 ✅")
         } catch {
-            progress.isScanning = false
-            progress.message = error.localizedDescription
+            progress = ScanProgress(isScanning: false, message: error.localizedDescription)
         }
     }
 
@@ -191,7 +197,10 @@ final class ScanManager: ObservableObject {
                 )
                 groupedMatches[item.assetLocalIdentifier, default: []] += matches
                 processed += 1
-                progress.processed = processed
+                progress = ScanProgress(
+                    isScanning: true, processed: processed, total: total,
+                    message: "重新分类中 \(processed) / \(total)"
+                )
             }
 
             for item in faceEmbeddings {
@@ -203,7 +212,10 @@ final class ScanManager: ObservableObject {
                 )
                 groupedMatches[item.assetLocalIdentifier, default: []] += matches
                 processed += 1
-                progress.processed = processed
+                progress = ScanProgress(
+                    isScanning: true, processed: processed, total: total,
+                    message: "重新分类中 \(processed) / \(total)"
+                )
             }
 
             for assetId in allReclassifiedAssetIds {
@@ -214,11 +226,10 @@ final class ScanManager: ObservableObject {
                 )
             }
 
-            progress.isScanning = false
-            progress.message = "重新分类完成 ✅"
+            progress = ScanProgress(isScanning: false, message: "重新分类完成 ✅")
+            reclassifyCount += 1
         } catch {
-            progress.isScanning = false
-            progress.message = error.localizedDescription
+            progress = ScanProgress(isScanning: false, message: error.localizedDescription)
         }
     }
 

@@ -47,6 +47,17 @@ final class CoreDataManager: ObservableObject {
         return try context.fetch(request).first
     }
 
+    func fetchCategoryNames(for assetLocalIdentifier: String) throws -> [String] {
+        let resultRequest = ClassificationResultEntity.fetchRequest()
+        resultRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+        let categoryIds = Set(try context.fetch(resultRequest).map(\.categoryId))
+        guard !categoryIds.isEmpty else { return [] }
+
+        let catRequest = SmartCategoryEntity.fetchRequest()
+        catRequest.predicate = NSPredicate(format: "id IN %@", categoryIds)
+        return try context.fetch(catRequest).compactMap(\.name)
+    }
+
     func createCategory(
         name: String,
         centerEmbedding: [Float],

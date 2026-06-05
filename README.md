@@ -110,3 +110,102 @@ MobileCLIP-S2 is used for both natural-language categories and reference-image c
 3. Choose an iPhone simulator or a physical iPhone running iOS 16+.
 4. For a physical device, set your signing team and bundle identifier.
 5. Run. The mock extractors let you test permissions, category creation, scanning, matching strictness adjustment, cleanup, deletion, and grid preview without the optional models.
+
+## IPA packaging
+
+This project can be exported as a development IPA for installation on devices that are covered by the selected Apple Developer Team. The current project signing values are:
+
+- Team ID: `5J56V9S9H8`
+- Bundle ID: `com.loyuk.SmartLocalAlbum`
+- Product name: `SmartAlbum`
+- Export options file: `ExportOptions.development.plist`
+
+### Prerequisites
+
+1. Install Xcode and open it at least once.
+2. Sign in to your Apple Developer account in Xcode: `Xcode > Settings > Accounts`.
+3. Make sure the Bundle ID is available in your Apple Developer account.
+4. For a development IPA, register the target iPhone in the developer account or connect the device once and let Xcode manage signing automatically.
+5. Confirm the Core ML resources are included in the app target if you want real classification in the packaged app:
+   - `mobileclip_s2_image.mlpackage`
+   - `mobileclip_s2_text.mlpackage`
+   - `clip-vocab.json`
+   - `clip-merges.txt`
+
+### Package with Xcode
+
+1. Open `SmartLocalAlbum.xcodeproj`.
+2. Select the `SmartLocalAlbum` scheme.
+3. Select `Any iOS Device (arm64)` as the destination.
+4. Open `Product > Archive`.
+5. After the archive finishes, Xcode opens the Organizer window.
+6. Select the new archive, then click `Distribute App`.
+7. Choose `Debugging` or `Development` export, depending on the Xcode version.
+8. Keep automatic signing enabled and use Team ID `5J56V9S9H8`.
+9. Finish the wizard and choose an output folder. The exported `.ipa` can be installed on eligible devices.
+
+### Package from the command line
+
+Run the following commands from the repository root:
+
+```bash
+mkdir -p build/ipa
+
+xcodebuild \
+  -project SmartLocalAlbum.xcodeproj \
+  -scheme SmartLocalAlbum \
+  -configuration Release \
+  -destination "generic/platform=iOS" \
+  -archivePath "$PWD/build/SmartLocalAlbum.xcarchive" \
+  clean archive \
+  -allowProvisioningUpdates
+
+xcodebuild \
+  -exportArchive \
+  -archivePath "$PWD/build/SmartLocalAlbum.xcarchive" \
+  -exportPath "$PWD/build/ipa" \
+  -exportOptionsPlist ExportOptions.development.plist \
+  -allowProvisioningUpdates
+```
+
+After export succeeds, the IPA should be in:
+
+```text
+build/ipa/SmartAlbum.ipa
+```
+
+### Install the IPA
+
+For a development IPA, install it on a device included in the provisioning profile:
+
+- Xcode: open `Window > Devices and Simulators`, select the device, then drag the `.ipa` into the installed apps list.
+- Apple Configurator: add the `.ipa` to the connected device.
+
+### Export method notes
+
+`ExportOptions.development.plist` is configured for development export:
+
+```xml
+<key>method</key>
+<string>development</string>
+<key>signingStyle</key>
+<string>automatic</string>
+<key>teamID</key>
+<string>5J56V9S9H8</string>
+```
+
+Use a different export method only when the signing setup matches that distribution path:
+
+- `development`: local development devices.
+- `ad-hoc`: registered external test devices.
+- `app-store-connect`: TestFlight or App Store upload.
+
+If you change the export method, update or create a matching export options plist before running `xcodebuild -exportArchive`.
+
+### Troubleshooting
+
+- `No profiles for 'com.loyuk.SmartLocalAlbum' were found`: sign in to Xcode, select the correct team, and rerun with `-allowProvisioningUpdates`.
+- `Automatic signing is disabled`: enable automatic signing in Xcode or keep `signingStyle` as `automatic` in the export options plist.
+- `Provisioning profile doesn't include the selected device`: register the device in the Apple Developer account, then regenerate the profile.
+- `CoreMLModelCompile failed`: verify the `.mlpackage` files are present and included in the `SmartLocalAlbum` target.
+- IPA installs but cannot open photos: grant photo library access in iOS Settings for `SmartAlbum`.

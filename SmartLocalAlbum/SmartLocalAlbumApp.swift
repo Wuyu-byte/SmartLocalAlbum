@@ -1,3 +1,4 @@
+import BackgroundTasks
 import SwiftUI
 
 @main
@@ -6,10 +7,11 @@ struct SmartLocalAlbumApp: App {
     @StateObject private var photoLibraryManager: PhotoLibraryManager
     @StateObject private var categoryManager: SmartCategoryManager
     @StateObject private var scanManager: ScanManager
+    @StateObject private var backgroundScanManager: BackgroundScanManager
 
     init() {
         let coreDataManager = CoreDataManager()
-        let photoLibraryManager = PhotoLibraryManager()
+        let photoLibraryManager = PhotoLibraryManager(coreDataManager: coreDataManager)
 
         let fastImageExtractor: any ImageEmbeddingExtracting = LazyImageEmbeddingExtractor(
             embeddingDimension: 512,
@@ -46,6 +48,15 @@ struct SmartLocalAlbumApp: App {
                 faceEmbeddingExtractor: faceExtractor
             )
         )
+
+        let bgManager = BackgroundScanManager(
+            photoLibraryManager: photoLibraryManager,
+            coreDataManager: coreDataManager,
+            fastImageEmbeddingExtractor: fastImageExtractor,
+            faceEmbeddingExtractor: faceExtractor
+        )
+        _backgroundScanManager = StateObject(wrappedValue: bgManager)
+        bgManager.registerBackgroundTask()
     }
 
     var body: some Scene {
@@ -55,6 +66,7 @@ struct SmartLocalAlbumApp: App {
                 .environmentObject(photoLibraryManager)
                 .environmentObject(categoryManager)
                 .environmentObject(scanManager)
+                .environmentObject(backgroundScanManager)
         }
     }
 }

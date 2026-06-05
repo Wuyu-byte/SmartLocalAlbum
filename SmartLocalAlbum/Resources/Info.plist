@@ -31,5 +31,9 @@
 	</dict>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.loyuk.SmartLocalAlbum.backgroundScan</string>
+	</array>
 </dict>
 </plist>

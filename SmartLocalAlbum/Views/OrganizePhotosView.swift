@@ -1,3 +1,4 @@
+import CoreLocation
 import SwiftUI
 import UIKit
 
@@ -162,6 +163,16 @@ struct OrganizePhotosView: View {
                 actionBar
             }
         }
+        .gesture(
+            DragGesture(minimumDistance: 30)
+                .onEnded { value in
+                    if value.translation.width < -50 {
+                        skipPhoto()
+                    } else if value.translation.width > 50 {
+                        goBack()
+                    }
+                }
+        )
     }
 
     private var sessionHeader: some View {
@@ -390,6 +401,11 @@ struct OrganizePhotosView: View {
         currentIndex = (currentIndex + 1) % assetIds.count
     }
 
+    private func goBack() {
+        guard !assetIds.isEmpty else { return }
+        currentIndex = currentIndex > 0 ? currentIndex - 1 : assetIds.count - 1
+    }
+
     private func moveToTrash(assetId: String) {
         do {
             try coreDataManager.movePhotoToTrash(assetLocalIdentifier: assetId)
@@ -415,10 +431,14 @@ struct OrganizePhotosView: View {
 
 private struct OrganizePhotoPage: View {
     @EnvironmentObject private var photoLibraryManager: PhotoLibraryManager
+    @EnvironmentObject private var coreDataManager: CoreDataManager
 
     let assetLocalIdentifier: String
 
     @State private var image: UIImage?
+    @State private var creationDate: Date?
+    @State private var locationName: String?
+    @State private var categoryNames: [String] = []
 
     var body: some View {
         ZStack {
@@ -433,10 +453,74 @@ private struct OrganizePhotoPage: View {
                 ProgressView()
                     .tint(.white)
             }
+
+            if creationDate != nil || locationName != nil || !categoryNames.isEmpty {
+                metadataOverlay
+            }
         }
         .task(id: assetLocalIdentifier) {
             image = nil
-            image = await photoLibraryManager.previewImage(for: assetLocalIdentifier, maxPixelSize: 1800)
+            creationDate = nil
+            locationName = nil
+            categoryNames = []
+
+            async let loadedImage = photoLibraryManager.previewImage(for: assetLocalIdentifier, maxPixelSize: 1800)
+            async let metadata = loadMetadata()
+
+            image = await loadedImage
+            let (date, location, categories) = await metadata
+            creationDate = date
+            locationName = location
+            categoryNames = categories
         }
+    }
+
+    private var metadataOverlay: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let creationDate {
+                Text(creationDate, format: .dateTime.year().month().day().hour().minute())
+                    .font(.caption.monospacedDigit())
+            }
+            if let locationName {
+                Label(locationName, systemImage: "location.fill")
+                    .font(.caption)
+            }
+            if !categoryNames.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(categoryNames, id: \.self) { name in
+                        Text(name)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.white.opacity(0.2), in: Capsule())
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+        .padding(16)
+    }
+
+    private func loadMetadata() async -> (Date?, String?, [String]) {
+        guard let asset = photoLibraryManager.asset(localIdentifier: assetLocalIdentifier) else {
+            return (nil, nil, [])
+        }
+
+        let date = asset.creationDate
+        var locationName: String?
+
+        if let location = asset.location {
+            let geocoder = CLGeocoder()
+            if let placemarks = try? await geocoder.reverseGeocodeLocation(location),
+               let placemark = placemarks.first {
+                locationName = placemark.locality ?? placemark.administrativeArea
+            }
+        }
+
+        let categories = (try? coreDataManager.fetchCategoryNames(for: assetLocalIdentifier)) ?? []
+        return (date, locationName, categories)
     }
 }
