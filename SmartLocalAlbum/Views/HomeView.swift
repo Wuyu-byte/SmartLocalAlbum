@@ -32,6 +32,12 @@ struct HomeView: View {
             .tag(Tab.search)
 
             NavigationStack {
+                MetadataFilterView()
+            }
+            .tabItem { Label("筛选", systemImage: "line.3.horizontal.decrease") }
+            .tag(Tab.filter)
+
+            NavigationStack {
                 LiveAlbumsView()
             }
             .tabItem { Label("动态", systemImage: "sparkles") }
@@ -42,12 +48,6 @@ struct HomeView: View {
             }
             .tabItem { Label("回收站", systemImage: "trash") }
             .tag(Tab.recycle)
-
-            NavigationStack {
-                MetadataFilterView()
-            }
-            .tabItem { Label("筛选", systemImage: "line.3.horizontal.decrease") }
-            .tag(Tab.filter)
         }
         .onOpenURL { url in
             guard url.scheme == "smartalbum" else { return }

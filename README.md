@@ -17,6 +17,10 @@ SmartLocalAlbum/
       CoreDataManager.swift
       SmartCategoryManager.swift
       ScanManager.swift
+      BackgroundScanManager.swift
+      SearchManager.swift
+      DuplicateDetectionManager.swift
+      ExportManager.swift
     Services/
       ImageEmbeddingExtracting.swift
       TextEmbeddingExtracting.swift
@@ -25,6 +29,10 @@ SmartLocalAlbum/
       LazyEmbeddingExtractors.swift
       MockImageEmbeddingExtractor.swift
       SimilarityClassifier.swift
+      PerceptualHashExtractor.swift
+      WidgetSharedData.swift
+      WidgetSyncService.swift
+      FaceEmbeddingExtractor.swift
     Utils/
       VectorUtils.swift
     Views/
@@ -34,8 +42,21 @@ SmartLocalAlbum/
       PhotoGridItemView.swift
       PhotoPreviewView.swift
       EmptyStateView.swift
+      ShareSheetView.swift
+      RecycleBinView.swift
+      OnboardingView.swift
+      SearchView.swift
+      DuplicateGroupsView.swift
+      ExportSheetView.swift
+      LiveAlbumsView.swift
+      MetadataFilterView.swift
     Resources/
       Info.plist
+      Models/
+        mobileclip_s2_image.mlpackage
+        mobileclip_s2_text.mlpackage
+        clip-vocab.json
+        clip-merges.txt
 ```
 
 ## Core Data model
