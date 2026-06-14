@@ -13,28 +13,50 @@ struct HomeView: View {
     @State private var isShowingCreateCategory = false
     @State private var isShowingOnboarding = false
     @State private var errorMessage: String?
+    @State private var selectedTab: Tab = .home
 
     private let hasSeenOnboardingKey = "SmartLocalAlbum.hasSeenOnboarding"
 
+    enum Tab: Hashable { case home, search, live, recycle, filter }
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             homeTab
-                .tabItem {
-                    Label("首页", systemImage: "house")
-                }
+                .tabItem { Label("首页", systemImage: "house") }
+                .tag(Tab.home)
+
+            NavigationStack {
+                SearchView()
+            }
+            .tabItem { Label("搜索", systemImage: "sparkle.magnifyingglass") }
+            .tag(Tab.search)
+
+            NavigationStack {
+                LiveAlbumsView()
+            }
+            .tabItem { Label("动态", systemImage: "sparkles") }
+            .tag(Tab.live)
 
             NavigationStack {
                 RecycleBinView()
             }
-            .tabItem {
-                Label("回收站", systemImage: "trash")
-            }
+            .tabItem { Label("回收站", systemImage: "trash") }
+            .tag(Tab.recycle)
 
             NavigationStack {
-                FAQView()
+                MetadataFilterView()
             }
-            .tabItem {
-                Label("常见问题", systemImage: "questionmark.circle")
+            .tabItem { Label("筛选", systemImage: "line.3.horizontal.decrease") }
+            .tag(Tab.filter)
+        }
+        .onOpenURL { url in
+            guard url.scheme == "smartalbum" else { return }
+            switch url.host {
+            case "search": selectedTab = .search
+            case "live-albums": selectedTab = .live
+            case "recycle": selectedTab = .recycle
+            case "home": selectedTab = .home
+            default: selectedTab = .home
             }
         }
     }
@@ -81,6 +103,16 @@ struct HomeView: View {
             }
             .navigationTitle("智能整理相册")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink {
+                        DuplicateGroupsView()
+                    } label: {
+                        Image(systemName: "square.on.square")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .accessibilityLabel("智能去重")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         isShowingCreateCategory = true
@@ -264,57 +296,6 @@ struct HomeView: View {
 
 }
 
-private struct FAQView: View {
-    private let items: [(question: String, answer: String)] = [
-        (
-            "为什么扫描前要先创建分类？",
-            "扫描会按你创建的分类寻找照片。先建分类，可以让处理更快，也更贴近你的喜好。"
-        ),
-        (
-            "文字描述和参考图片有什么区别？",
-            "文字描述适合找明确主题，比如猫、花、食物；参考图片适合找相近人物、场景或风格。"
-        ),
-        (
-            "匹配严格度应该怎么调？",
-            "结果太少时调低一点；混入不相关照片时调高一点。调整后会用已有特征重新整理。"
-        ),
-        (
-            "移除错分照片后还会回来吗？",
-            "不会。你在分类页移除的照片会记为这个分类的排除项，之后扫描会跳过它。"
-        ),
-        (
-            "扫描会不会上传照片？",
-            "不会。照片读取、特征提取和分类都在本机完成。"
-        ),
-        (
-            "回收站会删除系统相册里的照片吗？",
-            "移入回收站只会先从 App 里隐藏，不会立刻删除原图；永久删除或清空回收站时，才会从系统照片库删除，并且 iOS 会弹出系统确认。"
-        )
-    ]
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(items.indices, id: \.self) { index in
-                    let item = items[index]
-                    DisclosureGroup {
-                        Text(item.answer)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
-                    } label: {
-                        Text(item.question)
-                            .font(.headline)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .navigationTitle("常见问题")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 private struct CategoryRowView: View {
     let category: SmartCategoryModel
     let onThresholdChanged: (Float) -> Void
@@ -340,8 +321,16 @@ private struct CategoryRowView: View {
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(category.name)
-                            .font(.headline)
+                        HStack(spacing: 6) {
+                            Text(category.name)
+                                .font(.headline)
+                            if category.isLive {
+                                Image(systemName: "sparkles")
+                                    .font(.caption)
+                                    .foregroundStyle(.tint)
+                                    .accessibilityLabel("动态相册")
+                            }
+                        }
                         Text(categoryDescription)
                             .font(.caption)
                             .foregroundStyle(.secondary)

@@ -101,6 +101,21 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         Self.enumerateImageAssets()
     }
 
+    /// 获取所有照片和视频 asset,用于元数据筛选。
+    nonisolated static func enumerateAllAssets() -> [PHAsset] {
+        let options = PHFetchOptions()
+        options.sortDescriptors = [
+            NSSortDescriptor(key: "creationDate", ascending: false)
+        ]
+        let result = PHAsset.fetchAssets(with: options)
+        var assets: [PHAsset] = []
+        assets.reserveCapacity(result.count)
+        result.enumerateObjects { asset, _, _ in
+            assets.append(asset)
+        }
+        return assets
+    }
+
     func randomImageAssetIdentifiers(limit: Int, excluding excludedAssetIds: Set<String> = []) async -> [String] {
         guard limit > 0 else { return [] }
         let status = hasReadAccess ? authorizationStatus : await requestAuthorization()

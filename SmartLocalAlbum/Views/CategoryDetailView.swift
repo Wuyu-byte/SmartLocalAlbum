@@ -9,6 +9,8 @@ struct CategoryDetailView: View {
     @State private var results: [ClassificationResultModel] = []
     @State private var categories: [SmartCategoryModel] = []
     @State private var errorMessage: String?
+    @State private var isShowingExport = false
+    @State private var currentCategory: SmartCategoryModel?
 
     private let columns = [
         GridItem(.flexible(), spacing: 2),
@@ -83,6 +85,25 @@ struct CategoryDetailView: View {
         }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Menu {
+                    Button {
+                        isShowingExport = true
+                    } label: {
+                        Label("导出 / 共享", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(results.isEmpty)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
+        .sheet(isPresented: $isShowingExport) {
+            if let category = currentCategory {
+                ExportSheetView(category: category, resultAssetIds: results.map(\.assetLocalIdentifier))
+            }
+        }
         .task { loadData() }
         .refreshable { loadData() }
         .alert("提示", isPresented: Binding(
@@ -114,6 +135,7 @@ struct CategoryDetailView: View {
         do {
             results = try coreDataManager.fetchResults(categoryId: categoryId)
             categories = try coreDataManager.fetchCategoryModels()
+            currentCategory = categories.first(where: { $0.id == categoryId })
         } catch {
             errorMessage = error.localizedDescription
         }

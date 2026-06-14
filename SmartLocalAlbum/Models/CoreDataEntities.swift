@@ -28,11 +28,24 @@ final class SmartCategoryEntity: NSManagedObject {
     @NSManaged var promptText: String?
     @NSManaged var templateKey: String?
     @NSManaged var referenceMatchingMode: String?
+    @NSManaged var isLive: Bool
     @NSManaged var createdAt: Date
     @NSManaged var updatedAt: Date
 
     @nonobjc class func fetchRequest() -> NSFetchRequest<SmartCategoryEntity> {
         NSFetchRequest<SmartCategoryEntity>(entityName: "SmartCategoryEntity")
+    }
+}
+
+@objc(PhotoHashEntity)
+final class PhotoHashEntity: NSManagedObject {
+    /// 64 位 dHash,big-endian 字节序,8 字节整数。
+    @NSManaged var hashNumber: Int64
+    @NSManaged var assetLocalIdentifier: String
+    @NSManaged var createdAt: Date
+
+    @nonobjc class func fetchRequest() -> NSFetchRequest<PhotoHashEntity> {
+        NSFetchRequest<PhotoHashEntity>(entityName: "PhotoHashEntity")
     }
 }
 

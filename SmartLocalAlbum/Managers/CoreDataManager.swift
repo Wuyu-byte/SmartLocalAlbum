@@ -122,7 +122,8 @@ final class CoreDataManager: ObservableObject {
         matchingEmbeddingKind: EmbeddingKind = .image,
         promptText: String? = nil,
         templateKey: String? = nil,
-        referenceMatchingMode: ReferenceMatchingMode = .fast
+        referenceMatchingMode: ReferenceMatchingMode = .fast,
+        isLive: Bool = false
     ) throws -> SmartCategoryModel {
         let now = Date()
         let entity = SmartCategoryEntity(context: context)
@@ -138,6 +139,7 @@ final class CoreDataManager: ObservableObject {
         entity.promptText = promptText
         entity.templateKey = templateKey
         entity.referenceMatchingMode = referenceMatchingMode.rawValue
+        entity.isLive = isLive
         entity.createdAt = now
         entity.updatedAt = now
         try saveContext()
@@ -147,6 +149,13 @@ final class CoreDataManager: ObservableObject {
     func updateCategoryThreshold(id: UUID, threshold: Float) throws {
         guard let category = try fetchCategory(id: id) else { return }
         category.threshold = threshold
+        category.updatedAt = Date()
+        try saveContext()
+    }
+
+    func updateCategoryLiveState(id: UUID, isLive: Bool) throws {
+        guard let category = try fetchCategory(id: id) else { return }
+        category.isLive = isLive
         category.updatedAt = Date()
         try saveContext()
     }
@@ -263,6 +272,26 @@ final class CoreDataManager: ObservableObject {
         }
     }
 
+    /// 后台 context 版本,避免主线程 O(N) 反序列化阻塞。
+    /// 返回 Sendable 的 [PhotoEmbeddingSummary] 供 SearchManager 在 detached 上排序。
+    func fetchAllPhotoEmbeddingModelsAsync(
+        kind: EmbeddingKind? = nil
+    ) async throws -> [PhotoEmbeddingSummary] {
+        try await performBackground { ctx in
+            let request = PhotoEmbeddingEntity.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "updatedAt", ascending: false)]
+            if let kind {
+                request.predicate = NSPredicate(format: "embeddingKind == %@", kind.rawValue)
+            }
+            return try ctx.fetch(request).map { entity in
+                PhotoEmbeddingSummary(
+                    assetLocalIdentifier: entity.assetLocalIdentifier,
+                    embedding: VectorUtils.dataToFloatArray(entity.embeddingData)
+                )
+            }
+        }
+    }
+
     func hasCategory(templateKey: String) throws -> Bool {
         let request = SmartCategoryEntity.fetchRequest()
         request.fetchLimit = 1
@@ -283,6 +312,28 @@ final class CoreDataManager: ObservableObject {
             )
         }
         request.sortDescriptors = [NSSortDescriptor(key: "similarity", ascending: false)]
+        return try context.fetch(request).map(Self.resultModel(from:))
+    }
+
+    /// 通用的 result 计数 / 列表接口;`categoryId == nil` 时返回全部。
+    /// `limit` 截断;`-1` 表示不限制(慎用,可能返回 10w+ 条)。
+    func fetchResults(categoryId: UUID?, limit: Int = -1) throws -> [ClassificationResultModel] {
+        let request = ClassificationResultEntity.fetchRequest()
+        let trashedAssetIds = try fetchTrashedAssetIdSet()
+        var predicates: [NSPredicate] = []
+        if let categoryId {
+            predicates.append(NSPredicate(format: "categoryId == %@", categoryId as CVarArg))
+        }
+        if !trashedAssetIds.isEmpty {
+            predicates.append(NSPredicate(format: "NOT (assetLocalIdentifier IN %@)", Array(trashedAssetIds)))
+        }
+        if !predicates.isEmpty {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
+        }
+        if limit > 0 {
+            request.fetchLimit = limit
+        }
+        request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: false)]
         return try context.fetch(request).map(Self.resultModel(from:))
     }
 
@@ -380,6 +431,72 @@ final class CoreDataManager: ObservableObject {
         try deleteEmbeddings(assetLocalIdentifier: assetLocalIdentifier)
         try deleteExclusions(assetLocalIdentifier: assetLocalIdentifier)
         try deleteTrashRecord(assetLocalIdentifier: assetLocalIdentifier)
+        try deletePhotoHash(assetLocalIdentifier: assetLocalIdentifier)
+    }
+
+    // MARK: - Photo Hash
+
+    func savePhotoHash(assetLocalIdentifier: String, hash: Int64) throws {
+        let request = PhotoHashEntity.fetchRequest()
+        request.fetchLimit = 1
+        request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+        let entity: PhotoHashEntity
+        if let existing = try context.fetch(request).first {
+            entity = existing
+        } else {
+            entity = PhotoHashEntity(context: context)
+            entity.assetLocalIdentifier = assetLocalIdentifier
+            entity.createdAt = Date()
+        }
+        entity.hashNumber = hash
+        try saveContext()
+    }
+
+    func savePhotoHashAsync(assetLocalIdentifier: String, hash: Int64) async throws {
+        try await performBackground { ctx in
+            let request = PhotoHashEntity.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+            let entity: PhotoHashEntity
+            if let existing = try ctx.fetch(request).first {
+                entity = existing
+            } else {
+                entity = PhotoHashEntity(context: ctx)
+                entity.assetLocalIdentifier = assetLocalIdentifier
+                entity.createdAt = Date()
+            }
+            entity.hashNumber = hash
+            if ctx.hasChanges { try ctx.save() }
+        }
+    }
+
+    func deletePhotoHash(assetLocalIdentifier: String) throws {
+        let request = PhotoHashEntity.fetchRequest()
+        request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+        for entity in try context.fetch(request) { context.delete(entity) }
+        try saveContext()
+    }
+
+    /// 返回所有已抽取的 photo 哈希,[(assetId, hash)]。
+    func fetchAllPhotoHashes() throws -> [(String, Int64)] {
+        let request = PhotoHashEntity.fetchRequest()
+        return try context.fetch(request).map { ($0.assetLocalIdentifier, $0.hashNumber) }
+    }
+
+    /// 后台 context 版本,避免读取 10k+ 条记录阻塞主线程。
+    func fetchAllPhotoHashesAsync() async throws -> [(String, Int64)] {
+        try await performBackground { ctx in
+            let request = PhotoHashEntity.fetchRequest()
+            return try ctx.fetch(request).map { ($0.assetLocalIdentifier, $0.hashNumber) }
+        }
+    }
+
+    /// 计算已存在哈希的 asset 数(用于 UI 进度展示)。
+    func hashCountAsync() async throws -> Int {
+        try await performBackground { ctx in
+            let request = PhotoHashEntity.fetchRequest()
+            return try ctx.count(for: request)
+        }
     }
 
     func resetScanData() throws {
@@ -720,6 +837,7 @@ final class CoreDataManager: ObservableObject {
                     matchingEmbeddingKind: EmbeddingKind(rawValue: entity.matchingEmbeddingKind)
                         ?? (entity.isPortrait ? .face : .image)
                 ),
+            isLive: entity.isLive,
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt
         )
@@ -784,8 +902,18 @@ final class CoreDataManager: ObservableObject {
             attribute("promptText", .stringAttributeType, optional: true),
             attribute("templateKey", .stringAttributeType, indexed: true, optional: true),
             attribute("referenceMatchingMode", .stringAttributeType, optional: true),
+            attribute("isLive", .booleanAttributeType, defaultValue: false),
             attribute("createdAt", .dateAttributeType),
             attribute("updatedAt", .dateAttributeType)
+        ]
+
+        let photoHash = NSEntityDescription()
+        photoHash.name = "PhotoHashEntity"
+        photoHash.managedObjectClassName = NSStringFromClass(PhotoHashEntity.self)
+        photoHash.properties = [
+            attribute("hashNumber", .integer64AttributeType, indexed: true),
+            attribute("assetLocalIdentifier", .stringAttributeType, indexed: true),
+            attribute("createdAt", .dateAttributeType)
         ]
 
         let classificationResult = NSEntityDescription()
@@ -819,11 +947,12 @@ final class CoreDataManager: ObservableObject {
 
         addIndexes(to: photoEmbedding, attributeNames: ["assetLocalIdentifier", "embeddingKind"])
         addIndexes(to: smartCategory, attributeNames: ["id", "matchingEmbeddingKind", "templateKey"])
+        addIndexes(to: photoHash, attributeNames: ["hashNumber", "assetLocalIdentifier"])
         addIndexes(to: classificationResult, attributeNames: ["id", "assetLocalIdentifier", "categoryId"])
         addIndexes(to: trashedPhoto, attributeNames: ["assetLocalIdentifier"])
         addIndexes(to: categoryExclusion, attributeNames: ["assetLocalIdentifier", "categoryId"])
 
-        model.entities = [photoEmbedding, smartCategory, classificationResult, trashedPhoto, categoryExclusion]
+        model.entities = [photoEmbedding, smartCategory, photoHash, classificationResult, trashedPhoto, categoryExclusion]
         return model
     }
 

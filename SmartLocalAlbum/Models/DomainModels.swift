@@ -13,6 +13,7 @@ struct SmartCategoryModel: Identifiable, Hashable {
     var promptText: String?
     var templateKey: String?
     var referenceMatchingMode: ReferenceMatchingMode
+    var isLive: Bool
     var createdAt: Date
     var updatedAt: Date
 
@@ -85,6 +86,28 @@ struct TrashedPhotoModel: Identifiable, Hashable {
     var id: String { assetLocalIdentifier }
     let assetLocalIdentifier: String
     let trashedAt: Date
+}
+
+struct DuplicateGroup: Identifiable, Hashable {
+    let id: UUID
+    let assetLocalIdentifiers: [String]
+    /// 累计字节估算(展示给用户,不强保证)。
+    let approximateSavingsBytes: Int64
+}
+
+struct SearchHit: Identifiable, Hashable {
+    var id: String { assetLocalIdentifier }
+    let assetLocalIdentifier: String
+    let similarity: Float
+}
+
+struct ExportDestination: Hashable {
+    enum Kind: Hashable {
+        case systemAlbum(name: String)
+        case shareSheet
+        case files
+    }
+    let kind: Kind
 }
 
 struct ScanProgress: Equatable {
