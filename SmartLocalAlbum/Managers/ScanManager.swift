@@ -5,7 +5,8 @@ import UIKit
 @MainActor
 final class ScanManager: ObservableObject {
     @Published private(set) var progress = ScanProgress()
-    @Published private(set) var reclassifyCount: Int = 0
+    /// 最近一次重新分类的完成时间,UI 通过 .onChange(of:) 监听来刷新。
+    @Published private(set) var lastReclassifiedAt: Date = .distantPast
 
     static let bgScanProgressKey = "SmartLocalAlbum.bgScan.lastProcessedIndex"
     private let weeklyAutoScanKey = "SmartLocalAlbum.lastWeeklyAutoScanAt"
@@ -82,7 +83,7 @@ final class ScanManager: ObservableObject {
         }
 
         do {
-            let categories = try coreDataManager.fetchCategoryModels()
+            let categories = try await coreDataManager.fetchCategoryModelsAsync()
             guard !categories.isEmpty else {
                 progress = ScanProgress(isScanning: false, message: "请先创建分类")
                 return
@@ -90,8 +91,8 @@ final class ScanManager: ObservableObject {
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
 
-            let trashedAssetIds = try coreDataManager.fetchTrashedAssetIdSet()
-            let exclusionMap = try coreDataManager.fetchCategoryExclusionMap()
+            let trashedAssetIds = try await coreDataManager.fetchTrashedAssetIdSetAsync()
+            let exclusionMap = try await coreDataManager.fetchCategoryExclusionMapAsync()
             let allAssets = await Task.detached(priority: .userInitiated) {
                 PhotoLibraryManager.enumerateImageAssets()
             }.value
@@ -143,7 +144,7 @@ final class ScanManager: ObservableObject {
                     )
                 }
 
-                try coreDataManager.replaceClassificationResults(
+                try await coreDataManager.replaceClassificationResultsAsync(
                     assetLocalIdentifier: assetId,
                     matches: matches,
                     excludedCategoryIds: exclusionMap[assetId] ?? []
@@ -165,11 +166,11 @@ final class ScanManager: ObservableObject {
 
     private func performReclassification() async {
         do {
-            let categories = try coreDataManager.fetchCategoryModels()
+            let categories = try await coreDataManager.fetchCategoryModelsAsync()
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
-            let trashedAssetIds = try coreDataManager.fetchTrashedAssetIdSet()
-            let exclusionMap = try coreDataManager.fetchCategoryExclusionMap()
+            let trashedAssetIds = try await coreDataManager.fetchTrashedAssetIdSetAsync()
+            let exclusionMap = try await coreDataManager.fetchCategoryExclusionMapAsync()
             let imageEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .image)
                 .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
             let faceEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .face)
@@ -219,7 +220,7 @@ final class ScanManager: ObservableObject {
             }
 
             for assetId in allReclassifiedAssetIds {
-                try coreDataManager.replaceClassificationResults(
+                try await coreDataManager.replaceClassificationResultsAsync(
                     assetLocalIdentifier: assetId,
                     matches: groupedMatches[assetId] ?? [],
                     excludedCategoryIds: exclusionMap[assetId] ?? []
@@ -227,7 +228,7 @@ final class ScanManager: ObservableObject {
             }
 
             progress = ScanProgress(isScanning: false, message: "重新分类完成 ✅")
-            reclassifyCount += 1
+            lastReclassifiedAt = Date()
         } catch {
             progress = ScanProgress(isScanning: false, message: error.localizedDescription)
         }
@@ -241,21 +242,27 @@ final class ScanManager: ObservableObject {
         cachedImage: inout UIImage?
     ) async throws -> [Float]? {
         if !forceReextract,
-           let cached = try coreDataManager.fetchPhotoEmbedding(assetLocalIdentifier: assetId, kind: kind) {
-            return VectorUtils.dataToFloatArray(cached.embeddingData)
+           let cached = try await coreDataManager.fetchPhotoEmbeddingAsync(
+            assetLocalIdentifier: assetId, kind: kind
+           ) {
+            return cached.embedding
         }
 
+        // 人脸检测需要更高分辨率,与 image 抽图不共用缓存。
+        let targetSize: CGSize = kind == .face
+            ? CGSize(width: 1024, height: 1024)
+            : CGSize(width: 512, height: 512)
+
         let image: UIImage
-        if let existing = cachedImage {
+        if let existing = cachedImage, kind != .face {
             image = existing
         } else {
-            guard let loaded = await photoLibraryManager.image(
-                for: asset,
-                targetSize: CGSize(width: 512, height: 512)
-            ) else {
+            guard let loaded = await photoLibraryManager.image(for: asset, targetSize: targetSize) else {
                 return nil
             }
-            cachedImage = loaded
+            if kind != .face {
+                cachedImage = loaded
+            }
             image = loaded
         }
 
@@ -270,7 +277,7 @@ final class ScanManager: ObservableObject {
                 return nil
             }
             let embedding = try await extractor.embedding(for: image)
-            try coreDataManager.savePhotoEmbedding(
+            try await coreDataManager.savePhotoEmbeddingAsync(
                 assetLocalIdentifier: assetId,
                 embedding: embedding,
                 kind: kind

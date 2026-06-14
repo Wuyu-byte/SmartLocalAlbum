@@ -38,7 +38,11 @@ enum VectorUtils {
     }
 
     static func dataToFloatArray(_ data: Data) -> [Float] {
-        guard data.count >= MemoryLayout<Float>.size else { return [] }
+        let floatSize = MemoryLayout<Float>.size
+        guard data.count >= floatSize, data.count % floatSize == 0 else {
+            assertionFailure("VectorUtils.dataToFloatArray: data length \(data.count) is not aligned to Float")
+            return []
+        }
         return data.withUnsafeBytes { rawBuffer in
             let floatBuffer = rawBuffer.bindMemory(to: Float.self)
             return Array(floatBuffer)

@@ -1,13 +1,31 @@
 import CoreData
 import Foundation
+import os
 
 @MainActor
 final class CoreDataManager: ObservableObject {
+    enum StoreError: LocalizedError {
+        case failedToLoad(underlying: Error)
+
+        var errorDescription: String? {
+            switch self {
+            case .failedToLoad(let error):
+                return "无法加载本地数据库:\(error.localizedDescription)"
+            }
+        }
+    }
+
     let persistentContainer: NSPersistentContainer
+
+    @Published private(set) var loadError: StoreError?
 
     private var context: NSManagedObjectContext {
         persistentContainer.viewContext
     }
+
+    private let backgroundContext: NSManagedObjectContext
+
+    private let logger = Logger(subsystem: "SmartLocalAlbum", category: "CoreData")
 
     init(inMemory: Bool = false) {
         persistentContainer = NSPersistentContainer(
@@ -24,20 +42,55 @@ final class CoreDataManager: ObservableObject {
             description.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
         }
 
+        var loadFailure: Error?
         persistentContainer.loadPersistentStores { _, error in
             if let error {
-                fatalError("Failed to load Core Data store: \(error.localizedDescription)")
+                loadFailure = error
             }
         }
+        if let loadFailure {
+            logger.error("Failed to load Core Data store: \(loadFailure.localizedDescription, privacy: .public)")
+            self.loadError = .failedToLoad(underlying: loadFailure)
+        }
+
+        let bg = persistentContainer.newBackgroundContext()
+        bg.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+        self.backgroundContext = bg
 
         context.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
         context.automaticallyMergesChangesFromParent = true
+    }
+
+    /// 将一次 Core Data 操作调度到后台 context 上执行,避免阻塞主线程。
+    /// 调用方逻辑应只读取返回值,不持有返回的对象(NSManagedObject 不跨 context 持有)。
+    func performBackground<T: Sendable>(
+        _ block: @escaping @Sendable (NSManagedObjectContext) throws -> T
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            backgroundContext.perform {
+                do {
+                    let result = try block(self.backgroundContext)
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
     func fetchCategoryModels() throws -> [SmartCategoryModel] {
         let request = SmartCategoryEntity.fetchRequest()
         request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
         return try context.fetch(request).map(Self.categoryModel(from:))
+    }
+
+    /// 后台 context 版本,避免扫描开始时阻塞主线程。
+    func fetchCategoryModelsAsync() async throws -> [SmartCategoryModel] {
+        try await performBackground { ctx in
+            let request = SmartCategoryEntity.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: true)]
+            return try ctx.fetch(request).map(Self.categoryModel(from:))
+        }
     }
 
     func fetchCategory(id: UUID) throws -> SmartCategoryEntity? {
@@ -121,6 +174,25 @@ final class CoreDataManager: ObservableObject {
         return try context.fetch(request).first
     }
 
+    /// 后台 context 版本,仅返回是否已存在以及缓存的 embedding 数组。
+    /// 不返回 NSManagedObject,避免跨 context 持有。
+    func fetchPhotoEmbeddingAsync(
+        assetLocalIdentifier: String,
+        kind: EmbeddingKind = .image
+    ) async throws -> (exists: Bool, embedding: [Float])? {
+        try await performBackground { ctx in
+            let request = PhotoEmbeddingEntity.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(
+                format: "assetLocalIdentifier == %@ AND embeddingKind == %@",
+                assetLocalIdentifier,
+                kind.rawValue
+            )
+            guard let entity = try ctx.fetch(request).first else { return nil }
+            return (true, VectorUtils.dataToFloatArray(entity.embeddingData))
+        }
+    }
+
     func savePhotoEmbedding(
         assetLocalIdentifier: String,
         embedding: [Float],
@@ -142,6 +214,40 @@ final class CoreDataManager: ObservableObject {
         entity.embeddingData = VectorUtils.floatArrayToData(embedding)
         entity.updatedAt = now
         try saveContext()
+    }
+
+    /// 后台 context 版本,用于扫描循环中不阻塞主线程。
+    func savePhotoEmbeddingAsync(
+        assetLocalIdentifier: String,
+        embedding: [Float],
+        kind: EmbeddingKind = .image
+    ) async throws {
+        try await performBackground { ctx in
+            let request = PhotoEmbeddingEntity.fetchRequest()
+            request.fetchLimit = 1
+            request.predicate = NSPredicate(
+                format: "assetLocalIdentifier == %@ AND embeddingKind == %@",
+                assetLocalIdentifier,
+                kind.rawValue
+            )
+            let now = Date()
+            let entity: PhotoEmbeddingEntity
+            if let existing = try ctx.fetch(request).first {
+                entity = existing
+            } else {
+                entity = PhotoEmbeddingEntity(context: ctx)
+                entity.assetLocalIdentifier = assetLocalIdentifier
+                entity.embeddingKind = kind.rawValue
+                entity.createdAt = now
+            }
+            entity.assetLocalIdentifier = assetLocalIdentifier
+            entity.embeddingKind = kind.rawValue
+            entity.embeddingData = VectorUtils.floatArrayToData(embedding)
+            entity.updatedAt = now
+            if ctx.hasChanges {
+                try ctx.save()
+            }
+        }
     }
 
     func fetchAllPhotoEmbeddingModels(
@@ -210,6 +316,14 @@ final class CoreDataManager: ObservableObject {
     func fetchTrashedAssetIdSet() throws -> Set<String> {
         let request = TrashedPhotoEntity.fetchRequest()
         return Set(try context.fetch(request).map(\.assetLocalIdentifier))
+    }
+
+    /// 后台 context 版本。
+    func fetchTrashedAssetIdSetAsync() async throws -> Set<String> {
+        try await performBackground { ctx in
+            let request = TrashedPhotoEntity.fetchRequest()
+            return Set(try ctx.fetch(request).map(\.assetLocalIdentifier))
+        }
     }
 
     func isPhotoTrashed(assetLocalIdentifier: String) throws -> Bool {
@@ -344,6 +458,71 @@ final class CoreDataManager: ObservableObject {
         }
     }
 
+    /// 后台 context 版本,用于扫描循环中不阻塞主线程。
+    func replaceClassificationResultsAsync(
+        assetLocalIdentifier: String,
+        matches: [ClassificationMatch],
+        excludedCategoryIds: Set<UUID>? = nil
+    ) async throws {
+        try await performBackground { ctx in
+            // 检查是否在回收站
+            let trashRequest = TrashedPhotoEntity.fetchRequest()
+            trashRequest.fetchLimit = 1
+            trashRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+            if try ctx.count(for: trashRequest) > 0 {
+                let resultRequest = ClassificationResultEntity.fetchRequest()
+                resultRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+                for r in try ctx.fetch(resultRequest) { ctx.delete(r) }
+                if ctx.hasChanges { try ctx.save() }
+                return
+            }
+
+            // 删除自动分类结果
+            let autoRequest = ClassificationResultEntity.fetchRequest()
+            autoRequest.predicate = NSPredicate(
+                format: "assetLocalIdentifier == %@ AND isManual == NO",
+                assetLocalIdentifier
+            )
+            for r in try ctx.fetch(autoRequest) { ctx.delete(r) }
+
+            // 计算 blocked categories
+            let blockedCategoryIds: Set<UUID>
+            if let excludedCategoryIds {
+                blockedCategoryIds = excludedCategoryIds
+            } else {
+                let exclusionRequest = CategoryExclusionEntity.fetchRequest()
+                exclusionRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
+                blockedCategoryIds = Set(try ctx.fetch(exclusionRequest).map(\.categoryId))
+            }
+
+            // upsert
+            for match in matches where !blockedCategoryIds.contains(match.categoryId) {
+                let request = ClassificationResultEntity.fetchRequest()
+                request.fetchLimit = 1
+                request.predicate = NSPredicate(
+                    format: "assetLocalIdentifier == %@ AND categoryId == %@",
+                    assetLocalIdentifier,
+                    match.categoryId as CVarArg
+                )
+                let entity: ClassificationResultEntity
+                if let existing = try ctx.fetch(request).first {
+                    entity = existing
+                } else {
+                    entity = ClassificationResultEntity(context: ctx)
+                    entity.id = UUID()
+                    entity.createdAt = Date()
+                }
+                entity.assetLocalIdentifier = assetLocalIdentifier
+                entity.categoryId = match.categoryId
+                entity.similarity = match.similarity
+                entity.isManual = entity.isManual || false
+            }
+            if ctx.hasChanges {
+                try ctx.save()
+            }
+        }
+    }
+
     func moveClassificationResult(
         assetLocalIdentifier: String,
         from sourceCategoryId: UUID?,
@@ -388,6 +567,16 @@ final class CoreDataManager: ObservableObject {
         }
     }
 
+    /// 后台 context 版本。
+    func fetchCategoryExclusionMapAsync() async throws -> [String: Set<UUID>] {
+        try await performBackground { ctx in
+            let request = CategoryExclusionEntity.fetchRequest()
+            return try ctx.fetch(request).reduce(into: [String: Set<UUID>]()) { result, exclusion in
+                result[exclusion.assetLocalIdentifier, default: []].insert(exclusion.categoryId)
+            }
+        }
+    }
+
     private func fetchExcludedCategoryIds(assetLocalIdentifier: String) throws -> Set<UUID> {
         let request = CategoryExclusionEntity.fetchRequest()
         request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
@@ -408,10 +597,16 @@ final class CoreDataManager: ObservableObject {
             assetLocalIdentifier,
             categoryId as CVarArg
         )
-        let entity = try context.fetch(request).first ?? CategoryExclusionEntity(context: context)
+        let now = Date()
+        let entity: CategoryExclusionEntity
+        if let existing = try context.fetch(request).first {
+            entity = existing
+        } else {
+            entity = CategoryExclusionEntity(context: context)
+            entity.createdAt = now
+        }
         entity.assetLocalIdentifier = assetLocalIdentifier
         entity.categoryId = categoryId
-        entity.createdAt = (entity.primitiveValue(forKey: "createdAt") as? Date) ?? Date()
         try saveContext()
     }
 
@@ -485,11 +680,25 @@ final class CoreDataManager: ObservableObject {
         try context.save()
     }
 
-    private static func categoryModel(from entity: SmartCategoryEntity) -> SmartCategoryModel {
-        let sampleIds = (try? JSONDecoder().decode([String].self, from: entity.sampleAssetIdsData)) ?? []
-        let sampleEmbeddings = entity.sampleEmbeddingsData.flatMap {
-            try? JSONDecoder().decode([[Float]].self, from: $0)
-        } ?? []
+    nonisolated private static func categoryModel(from entity: SmartCategoryEntity) -> SmartCategoryModel {
+        let sampleIds: [String]
+        do {
+            sampleIds = try JSONDecoder().decode([String].self, from: entity.sampleAssetIdsData)
+        } catch {
+            SampleLog.logger.error("Failed to decode sampleAssetIdsData: \(error.localizedDescription, privacy: .public)")
+            sampleIds = []
+        }
+        let sampleEmbeddings: [[Float]]
+        if let data = entity.sampleEmbeddingsData {
+            do {
+                sampleEmbeddings = try JSONDecoder().decode([[Float]].self, from: data)
+            } catch {
+                SampleLog.logger.error("Failed to decode sampleEmbeddingsData: \(error.localizedDescription, privacy: .public)")
+                sampleEmbeddings = []
+            }
+        } else {
+            sampleEmbeddings = []
+        }
         return SmartCategoryModel(
             id: entity.id,
             name: entity.name,
@@ -516,14 +725,14 @@ final class CoreDataManager: ObservableObject {
         )
     }
 
-    private static func defaultReferenceMatchingMode(
+    nonisolated private static func defaultReferenceMatchingMode(
         creationMode: CategoryCreationMode,
         matchingEmbeddingKind: EmbeddingKind
     ) -> ReferenceMatchingMode {
         .fast
     }
 
-    private static func resultModel(from entity: ClassificationResultEntity) -> ClassificationResultModel {
+    nonisolated private static func resultModel(from entity: ClassificationResultEntity) -> ClassificationResultModel {
         ClassificationResultModel(
             id: entity.id,
             assetLocalIdentifier: entity.assetLocalIdentifier,
@@ -534,11 +743,15 @@ final class CoreDataManager: ObservableObject {
         )
     }
 
-    private static func trashedPhotoModel(from entity: TrashedPhotoEntity) -> TrashedPhotoModel {
+    nonisolated private static func trashedPhotoModel(from entity: TrashedPhotoEntity) -> TrashedPhotoModel {
         TrashedPhotoModel(
             assetLocalIdentifier: entity.assetLocalIdentifier,
             trashedAt: entity.trashedAt
         )
+    }
+
+    private enum SampleLog {
+        static let logger = Logger(subsystem: "SmartLocalAlbum", category: "CoreData")
     }
 
     private static func makeManagedObjectModel() -> NSManagedObjectModel {

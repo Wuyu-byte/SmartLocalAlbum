@@ -78,7 +78,7 @@ struct PhotoPreviewView: View {
                 moveToTrash()
             }
         } message: {
-            Text("照片会从分类和整理列表中隐藏，但仍保留在系统照片库。可以在回收站恢复或永久删除。")
+            Text("照片会从分类列表中隐藏，但仍保留在系统照片库。可以在回收站恢复或永久删除。")
         }
         .alert("提示", isPresented: Binding(
             get: { errorMessage != nil },

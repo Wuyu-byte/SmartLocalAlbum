@@ -24,13 +24,6 @@ struct HomeView: View {
                 }
 
             NavigationStack {
-                OrganizePhotosView()
-            }
-            .tabItem {
-                Label("整理", systemImage: "rectangle.stack.badge.play")
-            }
-
-            NavigationStack {
                 RecycleBinView()
             }
             .tabItem {
@@ -135,7 +128,7 @@ struct HomeView: View {
                     runAutoScanIfReady()
                 }
             }
-            .onChange(of: scanManager.reclassifyCount) { _ in
+            .onChange(of: scanManager.lastReclassifiedAt) { _ in
                 loadCategories()
             }
             .onChange(of: scanManager.progress.isScanning) { isScanning in

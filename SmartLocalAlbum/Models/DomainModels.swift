@@ -20,9 +20,9 @@ struct SmartCategoryModel: Identifiable, Hashable {
         switch matchingEmbeddingKind {
         case .image where creationMode == .naturalLanguage:
             return 0.05...0.40
-        case .mobileclip2Image, .dinov2Image:
-            return 0.10...0.99
         case .image, .face:
+            return 0.10...0.99
+        case .mobileclip2Image, .dinov2Image:
             return 0.10...0.99
         }
     }
@@ -32,17 +32,14 @@ struct SmartCategoryModel: Identifiable, Hashable {
         case .naturalLanguage:
             return "文字描述"
         case .referenceImages:
-            if matchingEmbeddingKind == .dinov2Image || matchingEmbeddingKind == .mobileclip2Image {
-                return "旧参考图片"
-            }
-            return "参考图片"
+            return matchingEmbeddingKind.isLegacy ? "旧参考图片" : "参考图片"
         case .portraitReference:
             return "人脸参考"
         }
     }
 
     var isRetiredReferenceCategory: Bool {
-        matchingEmbeddingKind == .dinov2Image || matchingEmbeddingKind == .mobileclip2Image
+        matchingEmbeddingKind.isLegacy
     }
 }
 
@@ -51,6 +48,11 @@ enum EmbeddingKind: String, CaseIterable {
     case face
     case mobileclip2Image
     case dinov2Image
+
+    /// 历史模型(已弃用),旧分类仅用于提示用户重建,不再参与扫描。
+    var isLegacy: Bool {
+        self == .mobileclip2Image || self == .dinov2Image
+    }
 }
 
 enum CategoryCreationMode: String, CaseIterable {
@@ -61,10 +63,6 @@ enum CategoryCreationMode: String, CaseIterable {
 
 enum ReferenceMatchingMode: String, CaseIterable {
     case fast
-
-    var displayName: String {
-        "默认"
-    }
 }
 
 struct ClassificationMatch: Identifiable, Hashable {

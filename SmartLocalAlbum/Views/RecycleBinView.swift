@@ -22,7 +22,7 @@ struct RecycleBinView: View {
                 EmptyStateView(
                     title: "回收站是空的",
                     systemImage: "trash",
-                    message: "从整理、分类或预览里删除的照片会先放到这里。"
+                    message: "从分类或预览里删除的照片会先放到这里。"
                 )
             } else {
                 ScrollView {

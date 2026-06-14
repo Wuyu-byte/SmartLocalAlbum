@@ -7,6 +7,7 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
 
     private let imageManager = PHCachingImageManager()
     private let coreDataManager: CoreDataManager
+    private var pendingChangeTask: Task<Void, Never>?
 
     init(coreDataManager: CoreDataManager) {
         self.coreDataManager = coreDataManager
@@ -28,21 +29,34 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
     }
 
     nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Task { @MainActor in
-            guard let embeddings = try? coreDataManager.fetchAllPhotoEmbeddingModels() else { return }
-            let knownIds = Set(embeddings.map(\.assetLocalIdentifier))
-            guard !knownIds.isEmpty else { return }
-
-            let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(knownIds), options: nil)
-            var existingIds = Set<String>()
-            result.enumerateObjects { asset, _, _ in
-                existingIds.insert(asset.localIdentifier)
+        // 去抖:系统批量变更会连续触发多次回调,合并为单次清理任务。
+        let debounceNanos: UInt64 = 1_000_000_000
+        Task { @MainActor [weak self] in
+            self?.pendingChangeTask?.cancel()
+            let task = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: debounceNanos)
+                guard !Task.isCancelled, let self else { return }
+                await self.processPhotoLibraryChange()
             }
+            self?.pendingChangeTask = task
+        }
+    }
 
-            let staleIds = knownIds.subtracting(existingIds)
-            for assetId in staleIds {
-                try? coreDataManager.deletePhotoData(assetLocalIdentifier: assetId)
-            }
+    @MainActor
+    private func processPhotoLibraryChange() async {
+        guard let embeddings = try? coreDataManager.fetchAllPhotoEmbeddingModels() else { return }
+        let knownIds = Set(embeddings.map(\.assetLocalIdentifier))
+        guard !knownIds.isEmpty else { return }
+
+        let result = PHAsset.fetchAssets(withLocalIdentifiers: Array(knownIds), options: nil)
+        var existingIds = Set<String>()
+        result.enumerateObjects { asset, _, _ in
+            existingIds.insert(asset.localIdentifier)
+        }
+
+        let staleIds = knownIds.subtracting(existingIds)
+        for assetId in staleIds {
+            try? coreDataManager.deletePhotoData(assetLocalIdentifier: assetId)
         }
     }
 
@@ -61,10 +75,6 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
 
             PHPhotoLibrary.requestAuthorization(for: .readWrite) { status in
                 resume(status)
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                resume(PHPhotoLibrary.authorizationStatus(for: .readWrite))
             }
         }
         authorizationStatus = status
@@ -289,7 +299,10 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
                 }
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak imageManager] in
+            // 缩略图 8s,高分辨率预览 30s。避免硬 3s 让 iCloud 大图永远拿不到。
+            let pixelArea = targetSize.width * targetSize.height
+            let timeout: TimeInterval = pixelArea >= 1_500_000 ? 30 : 8
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) { [weak imageManager] in
                 imageManager?.cancelImageRequest(requestId)
                 resume(nil)
             }
