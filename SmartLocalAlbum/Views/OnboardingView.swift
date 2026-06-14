@@ -18,11 +18,7 @@ struct OnboardingView: View {
             "square.grid.3x3",
             "查看结果",
             "扫描完成后，点进分类就能看到匹配的照片。可以调整严格度来控制结果数量。"
-        ),
-        (
-            "trash",
-            "回收站",
-            "误删的照片可以在这里恢复，也可以永久删除以释放系统相册空间。")
+        )
     ]
 
     var body: some View {

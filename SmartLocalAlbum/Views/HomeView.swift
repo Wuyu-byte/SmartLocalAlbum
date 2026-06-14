@@ -17,7 +17,7 @@ struct HomeView: View {
 
     private let hasSeenOnboardingKey = "SmartLocalAlbum.hasSeenOnboarding"
 
-    enum Tab: Hashable { case home, search, live, recycle, filter }
+    enum Tab: Hashable { case home, search, live, filter }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -42,19 +42,12 @@ struct HomeView: View {
             }
             .tabItem { Label("动态", systemImage: "sparkles") }
             .tag(Tab.live)
-
-            NavigationStack {
-                RecycleBinView()
-            }
-            .tabItem { Label("回收站", systemImage: "trash") }
-            .tag(Tab.recycle)
         }
         .onOpenURL { url in
             guard url.scheme == "smartalbum" else { return }
             switch url.host {
             case "search": selectedTab = .search
             case "live-albums": selectedTab = .live
-            case "recycle": selectedTab = .recycle
             case "home": selectedTab = .home
             default: selectedTab = .home
             }

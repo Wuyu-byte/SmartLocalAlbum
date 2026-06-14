@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CategoryDetailView: View {
     @EnvironmentObject private var coreDataManager: CoreDataManager
+    @EnvironmentObject private var photoLibraryManager: PhotoLibraryManager
 
     let categoryId: UUID
     let title: String
@@ -11,6 +12,8 @@ struct CategoryDetailView: View {
     @State private var errorMessage: String?
     @State private var isShowingExport = false
     @State private var currentCategory: SmartCategoryModel?
+    @State private var deleteCandidate: ClassificationResultModel?
+    @State private var isDeleting = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 2),
@@ -57,6 +60,7 @@ struct CategoryDetailView: View {
                                         .padding(6)
                                 }
                                 .buttonStyle(.plain)
+                                .disabled(isDeleting)
                                 .accessibilityLabel("从此分类移除")
                             }
                             .contextMenu {
@@ -72,9 +76,9 @@ struct CategoryDetailView: View {
                                     Label("移到未分类", systemImage: "tray.and.arrow.down")
                                 }
                                 Button(role: .destructive) {
-                                    moveToTrash(assetId: result.assetLocalIdentifier)
+                                    deleteCandidate = result
                                 } label: {
-                                    Label("移入回收站", systemImage: "trash")
+                                    Label("删除照片", systemImage: "trash")
                                 }
                             }
                         }
@@ -106,6 +110,18 @@ struct CategoryDetailView: View {
         }
         .task { loadData() }
         .refreshable { loadData() }
+        .alert("确认删除这张照片?", isPresented: Binding(
+            get: { deleteCandidate != nil },
+            set: { if !$0 { deleteCandidate = nil } }
+        )) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard let deleteCandidate else { return }
+                Task { await confirmDelete(result: deleteCandidate) }
+            }
+        } message: {
+            Text("照片会从系统照片库彻底删除，iOS 会再次弹出系统确认。")
+        }
         .alert("提示", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -175,22 +191,34 @@ struct CategoryDetailView: View {
         }
     }
 
-    private func moveToTrash(assetId: String) {
+    private func confirmDelete(result: ClassificationResultModel) async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
+        let assetId = result.assetLocalIdentifier
         do {
-            try coreDataManager.movePhotoToTrash(assetLocalIdentifier: assetId)
+            let deleted = try await photoLibraryManager.deletePhoto(localIdentifier: assetId)
+            if deleted || photoLibraryManager.asset(localIdentifier: assetId) == nil {
+                try coreDataManager.deletePhotoData(assetLocalIdentifier: assetId)
+            }
             loadData()
         } catch {
             errorMessage = error.localizedDescription
         }
+        deleteCandidate = nil
     }
 }
 
 struct UncategorizedPhotosView: View {
     @EnvironmentObject private var coreDataManager: CoreDataManager
+    @EnvironmentObject private var photoLibraryManager: PhotoLibraryManager
 
     @State private var assetIds: [String] = []
     @State private var categories: [SmartCategoryModel] = []
     @State private var errorMessage: String?
+    @State private var deleteCandidate: String?
+    @State private var isDeleting = false
 
     private let columns = [
         GridItem(.flexible(), spacing: 2),
@@ -229,9 +257,9 @@ struct UncategorizedPhotosView: View {
                                     }
                                 }
                                 Button(role: .destructive) {
-                                    moveToTrash(assetId: assetId)
+                                    deleteCandidate = assetId
                                 } label: {
-                                    Label("移入回收站", systemImage: "trash")
+                                    Label("删除照片", systemImage: "trash")
                                 }
                             }
                         }
@@ -244,6 +272,18 @@ struct UncategorizedPhotosView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { loadData() }
         .refreshable { loadData() }
+        .alert("确认删除这张照片?", isPresented: Binding(
+            get: { deleteCandidate != nil },
+            set: { if !$0 { deleteCandidate = nil } }
+        )) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard let deleteCandidate else { return }
+                Task { await confirmDelete(assetId: deleteCandidate) }
+            }
+        } message: {
+            Text("照片会从系统照片库彻底删除，iOS 会再次弹出系统确认。")
+        }
         .alert("提示", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -276,12 +316,20 @@ struct UncategorizedPhotosView: View {
         }
     }
 
-    private func moveToTrash(assetId: String) {
+    private func confirmDelete(assetId: String) async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
+
         do {
-            try coreDataManager.movePhotoToTrash(assetLocalIdentifier: assetId)
+            let deleted = try await photoLibraryManager.deletePhoto(localIdentifier: assetId)
+            if deleted || photoLibraryManager.asset(localIdentifier: assetId) == nil {
+                try coreDataManager.deletePhotoData(assetLocalIdentifier: assetId)
+            }
             loadData()
         } catch {
             errorMessage = error.localizedDescription
         }
+        deleteCandidate = nil
     }
 }

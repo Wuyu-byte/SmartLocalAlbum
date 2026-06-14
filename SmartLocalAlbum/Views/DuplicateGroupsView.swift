@@ -10,6 +10,7 @@ import SwiftUI
 struct DuplicateGroupsView: View {
     @EnvironmentObject private var duplicateManager: DuplicateDetectionManager
     @State private var showDeleteAllConfirm = false
+    @State private var previewingAssetId: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,7 +20,7 @@ struct DuplicateGroupsView: View {
         }
         .navigationTitle("智能去重")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("删除所选照片?", isPresented: $showDeleteAllConfirm) {
+        .alert("删除全部重复照片?", isPresented: $showDeleteAllConfirm) {
             Button("取消", role: .cancel) {}
             Button("删除", role: .destructive) {
                 let allIds = duplicateManager.groups.flatMap(\.assetLocalIdentifiers)
@@ -28,7 +29,13 @@ struct DuplicateGroupsView: View {
                 }
             }
         } message: {
-            Text("已选 \(duplicateManager.groups.flatMap(\.assetLocalIdentifiers).count) 张照片,删除后可在\"回收站\"恢复。")
+            Text("将删除 \(duplicateManager.groups.flatMap(\.assetLocalIdentifiers).count) 张照片。iOS 会再次弹出系统确认。")
+        }
+        .fullScreenCover(item: Binding(
+            get: { previewingAssetId.map(PreviewTarget.init) },
+            set: { previewingAssetId = $0?.assetLocalIdentifier }
+        )) { target in
+            PhotoPreviewView(assetLocalIdentifier: target.assetLocalIdentifier)
         }
     }
 
@@ -71,7 +78,7 @@ struct DuplicateGroupsView: View {
                 Button(role: .destructive) {
                     showDeleteAllConfirm = true
                 } label: {
-                    Label("全部移到回收站", systemImage: "trash")
+                    Label("全部删除", systemImage: "trash")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -127,17 +134,27 @@ struct DuplicateGroupsView: View {
     private var groupsList: some View {
         List {
             ForEach(duplicateManager.groups) { group in
-                DuplicateGroupRow(group: group)
+                DuplicateGroupRow(group: group) { assetId in
+                    previewingAssetId = assetId
+                }
             }
         }
         .listStyle(.insetGrouped)
     }
 }
 
+private struct PreviewTarget: Identifiable {
+    let assetLocalIdentifier: String
+    var id: String { assetLocalIdentifier }
+}
+
 private struct DuplicateGroupRow: View {
     let group: DuplicateGroup
+    let onTapPhoto: (String) -> Void
     @EnvironmentObject private var duplicateManager: DuplicateDetectionManager
+    @State private var showDeleteGroupConfirm = false
     @State private var deleting = false
+    @State private var pendingDeletePhotoId: String?
 
     private let columns = [GridItem(.adaptive(minimum: 80, maximum: 100), spacing: 4)]
 
@@ -145,12 +162,19 @@ private struct DuplicateGroupRow: View {
         Section {
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(group.assetLocalIdentifiers, id: \.self) { assetId in
-                    NavigationLink {
-                        PhotoPreviewView(assetLocalIdentifier: assetId)
+                    Button {
+                        onTapPhoto(assetId)
                     } label: {
                         ThumbnailView(assetLocalIdentifier: assetId)
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            pendingDeletePhotoId = assetId
+                        } label: {
+                            Label("删除这张", systemImage: "trash")
+                        }
+                    }
                 }
             }
             HStack {
@@ -159,21 +183,46 @@ private struct DuplicateGroupRow: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 Button(role: .destructive) {
-                    deleting = true
-                    Task {
-                        await duplicateManager.removeAssets(group.assetLocalIdentifiers)
-                        deleting = false
-                    }
+                    showDeleteGroupConfirm = true
                 } label: {
                     if deleting {
                         ProgressView().scaleEffect(0.7)
                     } else {
-                        Text("移入回收站")
+                        Text("全部删除")
                     }
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
+                .disabled(deleting)
             }
+        }
+        .alert("删除这一组照片?", isPresented: $showDeleteGroupConfirm) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard !deleting else { return }
+                deleting = true
+                Task {
+                    await duplicateManager.removeAssets(group.assetLocalIdentifiers)
+                    deleting = false
+                }
+            }
+        } message: {
+            Text("将删除本组 \(group.assetLocalIdentifiers.count) 张照片。iOS 会再次弹出系统确认。")
+        }
+        .alert("删除这张照片?", isPresented: Binding(
+            get: { pendingDeletePhotoId != nil },
+            set: { if !$0 { pendingDeletePhotoId = nil } }
+        )) {
+            Button("取消", role: .cancel) {}
+            Button("删除", role: .destructive) {
+                guard let assetId = pendingDeletePhotoId else { return }
+                Task {
+                    await duplicateManager.removeAssets([assetId])
+                }
+                pendingDeletePhotoId = nil
+            }
+        } message: {
+            Text("将从系统照片库彻底删除,iOS 会再次弹出系统确认。")
         }
     }
 }

@@ -183,13 +183,16 @@ final class DuplicateDetectionManager: ObservableObject {
         return result
     }
 
-    /// 删除所选 asset(移入回收站 + 删除它们的 embedding/hash)
+    /// 从系统照片库删除所选 asset,并清理本地 Core Data 中的 embedding/hash/分类结果。
+    /// iOS 自身会弹出系统级确认对话框;调用方需先在 UI 上做应用层二次确认。
     func removeAssets(_ assetIds: [String]) async {
         do {
+            let deletedIds = try await photoLibraryManager.deletePhotos(localIdentifiers: assetIds)
             for id in assetIds {
                 if Task.isCancelled { return }
-                try coreDataManager.movePhotoToTrash(assetLocalIdentifier: id)
-                try coreDataManager.deletePhotoData(assetLocalIdentifier: id)
+                if deletedIds.contains(id) || photoLibraryManager.asset(localIdentifier: id) == nil {
+                    try coreDataManager.deletePhotoData(assetLocalIdentifier: id)
+                }
             }
             // 同步本地状态:从 groups 中移除
             let removedSet = Set(assetIds)

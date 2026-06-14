@@ -68,12 +68,10 @@ final class BackgroundScanManager: ObservableObject {
 
                 let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
                 let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
-                let trashedAssetIds = try await coreDataManager.fetchTrashedAssetIdSetAsync()
                 let exclusionMap = try await coreDataManager.fetchCategoryExclusionMapAsync()
-                let allAssets = await Task.detached(priority: .userInitiated) {
+                let assets = await Task.detached(priority: .userInitiated) {
                     PhotoLibraryManager.enumerateImageAssets()
                 }.value
-                let assets = allAssets.filter { !trashedAssetIds.contains($0.localIdentifier) }
 
                 let startIndex = UserDefaults.standard.integer(forKey: ScanManager.bgScanProgressKey)
                 guard startIndex < assets.count else {

@@ -91,12 +91,11 @@ final class ScanManager: ObservableObject {
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
 
-            let trashedAssetIds = try await coreDataManager.fetchTrashedAssetIdSetAsync()
             let exclusionMap = try await coreDataManager.fetchCategoryExclusionMapAsync()
             let allAssets = await Task.detached(priority: .userInitiated) {
                 PhotoLibraryManager.enumerateImageAssets()
             }.value
-            let assets = allAssets.filter { !trashedAssetIds.contains($0.localIdentifier) }
+            let assets = allAssets
             progress = ScanProgress(
                 isScanning: true,
                 processed: 0,
@@ -169,12 +168,9 @@ final class ScanManager: ObservableObject {
             let categories = try await coreDataManager.fetchCategoryModelsAsync()
             let imageCategories = categories.filter { $0.matchingEmbeddingKind == .image }
             let faceCategories = categories.filter { $0.matchingEmbeddingKind == .face }
-            let trashedAssetIds = try await coreDataManager.fetchTrashedAssetIdSetAsync()
             let exclusionMap = try await coreDataManager.fetchCategoryExclusionMapAsync()
             let imageEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .image)
-                .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
             let faceEmbeddings = try coreDataManager.fetchAllPhotoEmbeddingModels(kind: .face)
-                .filter { !trashedAssetIds.contains($0.assetLocalIdentifier) }
             let total = imageEmbeddings.count + faceEmbeddings.count
             progress = ScanProgress(
                 isScanning: true,

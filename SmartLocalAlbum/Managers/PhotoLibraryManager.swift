@@ -189,6 +189,15 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
         )
     }
 
+    /// 预览原图。
+    ///
+    /// 关键点:`PHAsset.pixelWidth/Height` 是图像**数据**方向,不是展示方向(很多 iPhone 竖屏照片
+    /// 存的是横图 + EXIF orientation 6/8 旋转)。如果用数据方向当 `targetSize` 再配 `.exact` +
+    /// `.aspectFit`,PHImageManager 会先把图旋转成展示方向,再硬塞进横/竖错的画布,导致出现
+    /// 大块透明区域,显示出来就是 SwiftUI 背景色的"黑条"。
+    ///
+    /// 这里用 `resizeMode: .fast`,让 PHImageManager 按图的实际宽高比返回接近 `targetSize` 的图,
+    /// 不会在图内部产生 letterbox,所有黑边由 SwiftUI 的 `scaledToFit()` 统一处理。
     func previewImage(
         for localIdentifier: String,
         maxPixelSize: CGFloat = 2600
@@ -200,7 +209,7 @@ final class PhotoLibraryManager: NSObject, ObservableObject, PHPhotoLibraryChang
             targetSize: targetSize,
             contentMode: .aspectFit,
             deliveryMode: .highQualityFormat,
-            resizeMode: .exact,
+            resizeMode: .fast,
             waitsForFinalImage: true
         )
     }

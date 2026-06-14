@@ -301,16 +301,7 @@ final class CoreDataManager: ObservableObject {
 
     func fetchResults(categoryId: UUID) throws -> [ClassificationResultModel] {
         let request = ClassificationResultEntity.fetchRequest()
-        let trashedAssetIds = try fetchTrashedAssetIdSet()
-        if trashedAssetIds.isEmpty {
-            request.predicate = NSPredicate(format: "categoryId == %@", categoryId as CVarArg)
-        } else {
-            request.predicate = NSPredicate(
-                format: "categoryId == %@ AND NOT (assetLocalIdentifier IN %@)",
-                categoryId as CVarArg,
-                Array(trashedAssetIds)
-            )
-        }
+        request.predicate = NSPredicate(format: "categoryId == %@", categoryId as CVarArg)
         request.sortDescriptors = [NSSortDescriptor(key: "similarity", ascending: false)]
         return try context.fetch(request).map(Self.resultModel(from:))
     }
@@ -319,13 +310,9 @@ final class CoreDataManager: ObservableObject {
     /// `limit` 截断;`-1` 表示不限制(慎用,可能返回 10w+ 条)。
     func fetchResults(categoryId: UUID?, limit: Int = -1) throws -> [ClassificationResultModel] {
         let request = ClassificationResultEntity.fetchRequest()
-        let trashedAssetIds = try fetchTrashedAssetIdSet()
         var predicates: [NSPredicate] = []
         if let categoryId {
             predicates.append(NSPredicate(format: "categoryId == %@", categoryId as CVarArg))
-        }
-        if !trashedAssetIds.isEmpty {
-            predicates.append(NSPredicate(format: "NOT (assetLocalIdentifier IN %@)", Array(trashedAssetIds)))
         }
         if !predicates.isEmpty {
             request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
@@ -344,60 +331,16 @@ final class CoreDataManager: ObservableObject {
 
         let resultRequest = ClassificationResultEntity.fetchRequest()
         let categorizedAssetIds = Set(try context.fetch(resultRequest).map(\.assetLocalIdentifier))
-        let trashedAssetIds = try fetchTrashedAssetIdSet()
 
         var seen = Set<String>()
         return embeddedAssetIds.filter { assetId in
             guard
                 !categorizedAssetIds.contains(assetId),
-                !trashedAssetIds.contains(assetId),
                 !seen.contains(assetId)
             else { return false }
             seen.insert(assetId)
             return true
         }
-    }
-
-    func fetchTrashedPhotoModels() throws -> [TrashedPhotoModel] {
-        let request = TrashedPhotoEntity.fetchRequest()
-        request.sortDescriptors = [NSSortDescriptor(key: "trashedAt", ascending: false)]
-        return try context.fetch(request).map(Self.trashedPhotoModel(from:))
-    }
-
-    func fetchTrashedAssetIdSet() throws -> Set<String> {
-        let request = TrashedPhotoEntity.fetchRequest()
-        return Set(try context.fetch(request).map(\.assetLocalIdentifier))
-    }
-
-    /// 后台 context 版本。
-    func fetchTrashedAssetIdSetAsync() async throws -> Set<String> {
-        try await performBackground { ctx in
-            let request = TrashedPhotoEntity.fetchRequest()
-            return Set(try ctx.fetch(request).map(\.assetLocalIdentifier))
-        }
-    }
-
-    func isPhotoTrashed(assetLocalIdentifier: String) throws -> Bool {
-        let request = TrashedPhotoEntity.fetchRequest()
-        request.fetchLimit = 1
-        request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
-        return try context.count(for: request) > 0
-    }
-
-    func movePhotoToTrash(assetLocalIdentifier: String) throws {
-        let request = TrashedPhotoEntity.fetchRequest()
-        request.fetchLimit = 1
-        request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
-
-        let entity = try context.fetch(request).first ?? TrashedPhotoEntity(context: context)
-        entity.assetLocalIdentifier = assetLocalIdentifier
-        entity.trashedAt = Date()
-        try deleteResults(assetLocalIdentifier: assetLocalIdentifier)
-        try saveContext()
-    }
-
-    func restorePhotoFromTrash(assetLocalIdentifier: String) throws {
-        try deleteTrashRecord(assetLocalIdentifier: assetLocalIdentifier)
     }
 
     func deleteResults(categoryId: UUID) throws {
@@ -430,7 +373,6 @@ final class CoreDataManager: ObservableObject {
         try deleteResults(assetLocalIdentifier: assetLocalIdentifier)
         try deleteEmbeddings(assetLocalIdentifier: assetLocalIdentifier)
         try deleteExclusions(assetLocalIdentifier: assetLocalIdentifier)
-        try deleteTrashRecord(assetLocalIdentifier: assetLocalIdentifier)
         try deletePhotoHash(assetLocalIdentifier: assetLocalIdentifier)
     }
 
@@ -553,11 +495,6 @@ final class CoreDataManager: ObservableObject {
         matches: [ClassificationMatch],
         excludedCategoryIds: Set<UUID>? = nil
     ) throws {
-        if try isPhotoTrashed(assetLocalIdentifier: assetLocalIdentifier) {
-            try deleteResults(assetLocalIdentifier: assetLocalIdentifier)
-            return
-        }
-
         try deleteAutomaticResults(assetLocalIdentifier: assetLocalIdentifier)
         let blockedCategoryIds: Set<UUID>
         if let excludedCategoryIds {
@@ -582,18 +519,6 @@ final class CoreDataManager: ObservableObject {
         excludedCategoryIds: Set<UUID>? = nil
     ) async throws {
         try await performBackground { ctx in
-            // 检查是否在回收站
-            let trashRequest = TrashedPhotoEntity.fetchRequest()
-            trashRequest.fetchLimit = 1
-            trashRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
-            if try ctx.count(for: trashRequest) > 0 {
-                let resultRequest = ClassificationResultEntity.fetchRequest()
-                resultRequest.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
-                for r in try ctx.fetch(resultRequest) { ctx.delete(r) }
-                if ctx.hasChanges { try ctx.save() }
-                return
-            }
-
             // 删除自动分类结果
             let autoRequest = ClassificationResultEntity.fetchRequest()
             autoRequest.predicate = NSPredicate(
@@ -645,7 +570,6 @@ final class CoreDataManager: ObservableObject {
         from sourceCategoryId: UUID?,
         to targetCategoryId: UUID
     ) throws {
-        try restorePhotoFromTrash(assetLocalIdentifier: assetLocalIdentifier)
         if let sourceCategoryId {
             try upsertExclusion(assetLocalIdentifier: assetLocalIdentifier, categoryId: sourceCategoryId)
             try deleteResult(assetLocalIdentifier: assetLocalIdentifier, categoryId: sourceCategoryId)
@@ -660,7 +584,6 @@ final class CoreDataManager: ObservableObject {
     }
 
     func moveToUncategorized(assetLocalIdentifier: String) throws {
-        try restorePhotoFromTrash(assetLocalIdentifier: assetLocalIdentifier)
         let existingCategoryIds = Set(try fetchCategoryModels().map(\.id))
         let matchedCategoryIds = try fetchResultCategoryIds(assetLocalIdentifier: assetLocalIdentifier)
         for categoryId in existingCategoryIds.union(matchedCategoryIds) {
@@ -758,15 +681,6 @@ final class CoreDataManager: ObservableObject {
         try saveContext()
     }
 
-    private func deleteTrashRecord(assetLocalIdentifier: String) throws {
-        let request = TrashedPhotoEntity.fetchRequest()
-        request.predicate = NSPredicate(format: "assetLocalIdentifier == %@", assetLocalIdentifier)
-        for trashRecord in try context.fetch(request) {
-            context.delete(trashRecord)
-        }
-        try saveContext()
-    }
-
     private func deleteResult(assetLocalIdentifier: String, categoryId: UUID) throws {
         let request = ClassificationResultEntity.fetchRequest()
         request.predicate = NSPredicate(
@@ -858,13 +772,6 @@ final class CoreDataManager: ObservableObject {
             similarity: entity.similarity,
             isManual: entity.isManual,
             createdAt: entity.createdAt
-        )
-    }
-
-    nonisolated private static func trashedPhotoModel(from entity: TrashedPhotoEntity) -> TrashedPhotoModel {
-        TrashedPhotoModel(
-            assetLocalIdentifier: entity.assetLocalIdentifier,
-            trashedAt: entity.trashedAt
         )
     }
 

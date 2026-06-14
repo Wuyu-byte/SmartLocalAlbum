@@ -12,7 +12,7 @@ struct PhotoPreviewView: View {
     @State private var isShowingShareSheet = false
     @State private var isShowingCopiedAlert = false
     @State private var isShowingDeleteConfirmation = false
-    @State private var isTrashed = false
+    @State private var isDeleting = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -38,28 +38,21 @@ struct PhotoPreviewView: View {
                 } label: {
                     Label("复制", systemImage: "doc.on.doc")
                 }
-                .disabled(image == nil)
+                .disabled(image == nil || isDeleting)
 
                 Button {
                     isShowingShareSheet = true
                 } label: {
                     Label("分享", systemImage: "square.and.arrow.up")
                 }
-                .disabled(image == nil)
+                .disabled(image == nil || isDeleting)
 
-                if isTrashed {
-                    Button {
-                        restorePhoto()
-                    } label: {
-                        Label("恢复", systemImage: "arrow.uturn.backward.circle")
-                    }
-                } else {
-                    Button(role: .destructive) {
-                        isShowingDeleteConfirmation = true
-                    } label: {
-                        Label("回收站", systemImage: "trash")
-                    }
+                Button(role: .destructive) {
+                    isShowingDeleteConfirmation = true
+                } label: {
+                    Label("删除", systemImage: "trash")
                 }
+                .disabled(isDeleting)
             }
         }
         .sheet(isPresented: $isShowingShareSheet) {
@@ -72,13 +65,13 @@ struct PhotoPreviewView: View {
         } message: {
             Text("照片已复制到剪贴板。")
         }
-        .alert("移入回收站", isPresented: $isShowingDeleteConfirmation) {
+        .alert("确认删除这张照片?", isPresented: $isShowingDeleteConfirmation) {
             Button("取消", role: .cancel) {}
-            Button("移入", role: .destructive) {
-                moveToTrash()
+            Button("删除", role: .destructive) {
+                Task { await deletePhoto() }
             }
         } message: {
-            Text("照片会从分类列表中隐藏，但仍保留在系统照片库。可以在回收站恢复或永久删除。")
+            Text("删除后会从系统照片库彻底移除（iOS 会再次弹出系统确认），本应用也会一并清理该照片的分类和指纹数据。")
         }
         .alert("提示", isPresented: Binding(
             get: { errorMessage != nil },
@@ -90,7 +83,6 @@ struct PhotoPreviewView: View {
         }
         .task(id: assetLocalIdentifier) {
             image = await photoLibraryManager.previewImage(for: assetLocalIdentifier)
-            loadTrashState()
         }
     }
 
@@ -100,28 +92,17 @@ struct PhotoPreviewView: View {
         isShowingCopiedAlert = true
     }
 
-    private func loadTrashState() {
-        do {
-            isTrashed = try coreDataManager.isPhotoTrashed(assetLocalIdentifier: assetLocalIdentifier)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
+    private func deletePhoto() async {
+        guard !isDeleting else { return }
+        isDeleting = true
+        defer { isDeleting = false }
 
-    private func moveToTrash() {
         do {
-            try coreDataManager.movePhotoToTrash(assetLocalIdentifier: assetLocalIdentifier)
-            isTrashed = true
+            let deleted = try await photoLibraryManager.deletePhoto(localIdentifier: assetLocalIdentifier)
+            if deleted || photoLibraryManager.asset(localIdentifier: assetLocalIdentifier) == nil {
+                try coreDataManager.deletePhotoData(assetLocalIdentifier: assetLocalIdentifier)
+            }
             dismiss()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func restorePhoto() {
-        do {
-            try coreDataManager.restorePhotoFromTrash(assetLocalIdentifier: assetLocalIdentifier)
-            isTrashed = false
         } catch {
             errorMessage = error.localizedDescription
         }
