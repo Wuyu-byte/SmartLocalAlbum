@@ -10,13 +10,15 @@ import SwiftUI
 struct DuplicateGroupsView: View {
     @EnvironmentObject private var duplicateManager: DuplicateDetectionManager
     @State private var showDeleteAllConfirm = false
-    @State private var previewingAssetId: String?
 
     var body: some View {
         VStack(spacing: 0) {
             controlBar
             Divider()
             content
+        }
+        .navigationDestination(for: DuplicatePhotoRoute.self) { route in
+            PhotoPreviewView(assetLocalIdentifier: route.assetLocalIdentifier)
         }
         .navigationTitle("智能去重")
         .navigationBarTitleDisplayMode(.inline)
@@ -30,12 +32,6 @@ struct DuplicateGroupsView: View {
             }
         } message: {
             Text("将删除 \(duplicateManager.groups.flatMap(\.assetLocalIdentifiers).count) 张照片。iOS 会再次弹出系统确认。")
-        }
-        .fullScreenCover(item: Binding(
-            get: { previewingAssetId.map(PreviewTarget.init) },
-            set: { previewingAssetId = $0?.assetLocalIdentifier }
-        )) { target in
-            PhotoPreviewView(assetLocalIdentifier: target.assetLocalIdentifier)
         }
     }
 
@@ -55,13 +51,9 @@ struct DuplicateGroupsView: View {
                     .lineLimit(1)
             }
             HStack(spacing: 12) {
-                Picker("相似度", selection: $duplicateManager.distanceThreshold) {
-                    Text("精确").tag(5)
-                    Text("较近").tag(10)
-                    Text("相似").tag(15)
-                }
-                .pickerStyle(.segmented)
-                .disabled(duplicateManager.isWorking)
+                Text("精确匹配")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
 
                 Button {
                     if duplicateManager.isWorking {
@@ -134,23 +126,19 @@ struct DuplicateGroupsView: View {
     private var groupsList: some View {
         List {
             ForEach(duplicateManager.groups) { group in
-                DuplicateGroupRow(group: group) { assetId in
-                    previewingAssetId = assetId
-                }
+                DuplicateGroupRow(group: group)
             }
         }
         .listStyle(.insetGrouped)
     }
 }
 
-private struct PreviewTarget: Identifiable {
+private struct DuplicatePhotoRoute: Hashable {
     let assetLocalIdentifier: String
-    var id: String { assetLocalIdentifier }
 }
 
 private struct DuplicateGroupRow: View {
     let group: DuplicateGroup
-    let onTapPhoto: (String) -> Void
     @EnvironmentObject private var duplicateManager: DuplicateDetectionManager
     @State private var showDeleteGroupConfirm = false
     @State private var deleting = false
@@ -162,9 +150,7 @@ private struct DuplicateGroupRow: View {
         Section {
             LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(group.assetLocalIdentifiers, id: \.self) { assetId in
-                    Button {
-                        onTapPhoto(assetId)
-                    } label: {
+                    NavigationLink(value: DuplicatePhotoRoute(assetLocalIdentifier: assetId)) {
                         ThumbnailView(assetLocalIdentifier: assetId)
                     }
                     .buttonStyle(.plain)

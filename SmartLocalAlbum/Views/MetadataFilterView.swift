@@ -1,7 +1,7 @@
 import SwiftUI
 import Photos
 
-/// 元数据筛选:按时间范围、地点、大小筛选照片和视频。
+/// 元数据筛选:按时间范围、大小筛选照片和视频。
 struct MetadataFilterView: View {
     @EnvironmentObject private var photoLibraryManager: PhotoLibraryManager
 
@@ -14,18 +14,11 @@ struct MetadataFilterView: View {
     @State private var startDate: Date = Date().addingTimeInterval(-365 * 24 * 3600)
     @State private var endDate: Date = Date()
 
-    // 地点筛选
-    @State private var isLocationFilterEnabled = false
-    @State private var allLocations: [String] = []
-    @State private var selectedLocation: String = ""
-
     // 大小筛选 (MB)
     @State private var isSizeFilterEnabled = false
     @State private var minSizeMB: Double = 0
     @State private var maxSizeMB: Double = 100
     private let maxSizeLimit: Double = 500
-
-    @State private var locationAssetSizes: [String: Int64] = [:]
 
     private let columns = [
         GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 4)
@@ -50,8 +43,6 @@ struct MetadataFilterView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 dateFilterSection
-                Divider()
-                locationFilterSection
                 Divider()
                 sizeFilterSection
             }
@@ -79,42 +70,6 @@ struct MetadataFilterView: View {
                     .datePickerStyle(.compact)
                     .font(.caption)
                     .onChange(of: endDate) { _ in applyFilters() }
-            }
-        }
-    }
-
-    // MARK: - Location Filter
-
-    private var locationFilterSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle("按地点", isOn: $isLocationFilterEnabled.animation())
-                .font(.subheadline.weight(.medium))
-                .onChange(of: isLocationFilterEnabled) { _ in applyFilters() }
-
-            if isLocationFilterEnabled {
-                if allLocations.isEmpty {
-                    Text("没有包含位置信息的照片")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Picker("地点", selection: $selectedLocation) {
-                        Text("全部地点").tag("")
-                        ForEach(allLocations, id: \.self) { location in
-                            HStack {
-                                Text(location)
-                                if let size = locationAssetSizes[location] {
-                                    Spacer()
-                                    Text("\(size) 张")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            .tag(location)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: selectedLocation) { _ in applyFilters() }
-                }
             }
         }
     }
@@ -203,28 +158,8 @@ struct MetadataFilterView: View {
             PhotoLibraryManager.enumerateAllAssets()
         }.value
         allAssets = assets
-        extractLocations()
         applyFilters()
         isLoading = false
-    }
-
-    private func extractLocations() {
-        var locationCounts: [String: Int] = [:]
-        for asset in allAssets {
-            guard let location = asset.location else { continue }
-            let geocoder = CLGeocoder()
-            // 使用坐标作为 key 避免大量反地理编码请求
-            let key = String(format: "%.4f,%.4f", location.coordinate.latitude, location.coordinate.longitude)
-            locationCounts[key, default: 0] += 1
-        }
-        // 转换成带数量的显示
-        var displayLocations: [(String, Int)] = []
-        for (coord, count) in locationCounts {
-            displayLocations.append((coord, count))
-        }
-        displayLocations.sort { $0.1 > $1.1 }
-        allLocations = displayLocations.map { $0.0 }
-        locationAssetSizes = Dictionary(uniqueKeysWithValues: displayLocations.map { ($0.0, Int64($0.1)) })
     }
 
     // MARK: - Filtering
@@ -238,14 +173,6 @@ struct MetadataFilterView: View {
             result = result.filter { asset in
                 guard let date = asset.creationDate else { return false }
                 return date >= start && date <= end
-            }
-        }
-
-        if isLocationFilterEnabled && !selectedLocation.isEmpty {
-            result = result.filter { asset in
-                guard let location = asset.location else { return false }
-                let key = String(format: "%.4f,%.4f", location.coordinate.latitude, location.coordinate.longitude)
-                return key == selectedLocation
             }
         }
 
