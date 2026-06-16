@@ -52,7 +52,6 @@
 		100000000000000000000144 /* Views/DuplicateGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000046 /* Views/DuplicateGroupsView.swift */; };
 		100000000000000000000145 /* Views/ExportSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000047 /* Views/ExportSheetView.swift */; };
 		100000000000000000000146 /* Views/LiveAlbumsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000048 /* Views/LiveAlbumsView.swift */; };
-		100000000000000000000147 /* Views/MetadataFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100000000000000000000049 /* Views/MetadataFilterView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -128,7 +127,6 @@
 		100000000000000000000046 /* Views/DuplicateGroupsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/DuplicateGroupsView.swift; sourceTree = "<group>"; };
 		100000000000000000000047 /* Views/ExportSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ExportSheetView.swift; sourceTree = "<group>"; };
 		100000000000000000000048 /* Views/LiveAlbumsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/LiveAlbumsView.swift; sourceTree = "<group>"; };
-		100000000000000000000049 /* Views/MetadataFilterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/MetadataFilterView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -225,7 +223,6 @@
 				100000000000000000000046 /* Views/DuplicateGroupsView.swift */,
 				100000000000000000000047 /* Views/ExportSheetView.swift */,
 				100000000000000000000048 /* Views/LiveAlbumsView.swift */,
-				100000000000000000000049 /* Views/MetadataFilterView.swift */,
 				100000000000000000000019 /* Resources/Info.plist */,
 				100000000000000000000022 /* Resources/Models/mobileclip_s2_image.mlpackage */,
 				100000000000000000000028 /* Resources/Models/mobileclip_s2_text.mlpackage */,
@@ -397,7 +394,6 @@
 				100000000000000000000144 /* Views/DuplicateGroupsView.swift in Sources */,
 				100000000000000000000145 /* Views/ExportSheetView.swift in Sources */,
 				100000000000000000000146 /* Views/LiveAlbumsView.swift in Sources */,
-				100000000000000000000147 /* Views/MetadataFilterView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

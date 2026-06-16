@@ -17,7 +17,7 @@ struct HomeView: View {
 
     private let hasSeenOnboardingKey = "SmartLocalAlbum.hasSeenOnboarding"
 
-    enum Tab: Hashable { case home, search, live, filter }
+    enum Tab: Hashable { case home, search, live }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -30,12 +30,6 @@ struct HomeView: View {
             }
             .tabItem { Label("搜索", systemImage: "sparkle.magnifyingglass") }
             .tag(Tab.search)
-
-            NavigationStack {
-                MetadataFilterView()
-            }
-            .tabItem { Label("筛选", systemImage: "line.3.horizontal.decrease") }
-            .tag(Tab.filter)
 
             NavigationStack {
                 LiveAlbumsView()
