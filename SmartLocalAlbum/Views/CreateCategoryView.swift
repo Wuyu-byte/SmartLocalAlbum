@@ -16,6 +16,8 @@ struct CreateCategoryView: View {
     @State private var sampleAssetIds: [String] = []
     @State private var isCreating = false
     @State private var errorMessage: String?
+    @State private var pendingPromptTranslation = ""
+    @State private var promptTranslationRequestID = 0
 
     private var canCreate: Bool {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isCreating else {
@@ -57,7 +59,26 @@ struct CreateCategoryView: View {
         }
     }
 
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 18.0, *) {
+            formContent
+                .modifier(SystemTranslationModifier(
+                    sourceText: pendingPromptTranslation,
+                    requestID: promptTranslationRequestID,
+                    onSuccess: { translatedPrompt in
+                        Task { await createCategory(promptOverride: translatedPrompt) }
+                    },
+                    onFailure: {
+                        Task { await createCategory(promptOverride: pendingPromptTranslation) }
+                    }
+                ))
+        } else {
+            formContent
+        }
+    }
+
+    private var formContent: some View {
         Form {
             Section("分类") {
                 TextField("分类名称", text: $name)
@@ -163,7 +184,7 @@ struct CreateCategoryView: View {
 
             Section {
                 Button {
-                    Task { await createCategory() }
+                    Task { await beginCreateCategory() }
                 } label: {
                     HStack {
                         if isCreating {
@@ -234,7 +255,24 @@ struct CreateCategoryView: View {
         }
     }
 
-    private func createCategory() async {
+    private func beginCreateCategory() async {
+        switch classificationMode {
+        case .referenceImages:
+            await createCategory(promptOverride: nil)
+        case .naturalLanguage:
+            let trimmedPrompt = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard containsCJKCharacters(trimmedPrompt), #available(iOS 18.0, *) else {
+                await createCategory(promptOverride: nil)
+                return
+            }
+
+            isCreating = true
+            pendingPromptTranslation = trimmedPrompt
+            promptTranslationRequestID += 1
+        }
+    }
+
+    private func createCategory(promptOverride: String?) async {
         isCreating = true
         defer { isCreating = false }
 
@@ -251,7 +289,7 @@ struct CreateCategoryView: View {
             case .naturalLanguage:
                 _ = try await categoryManager.createNaturalLanguageCategory(
                     name: name,
-                    promptText: promptText,
+                    promptText: promptOverride ?? promptText,
                     threshold: Float(threshold)
                 )
             }
@@ -259,6 +297,16 @@ struct CreateCategoryView: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func containsCJKCharacters(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value)
+                || (0x3400...0x4DBF).contains(scalar.value)
+                || (0xF900...0xFAFF).contains(scalar.value)
+                || (0x2E80...0x2EFF).contains(scalar.value)
+                || (0x3000...0x303F).contains(scalar.value)
         }
     }
 }

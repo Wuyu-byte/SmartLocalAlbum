@@ -5,13 +5,13 @@ import Translation
 ///
 /// **交互能力**:
 /// - 点击缩略图 → NavigationLink 全屏预览 (PhotoPreviewView)
-/// - 长按缩略图 → 上下文菜单 (预览/复制/选择)
+/// - 长按缩略图 → 上下文菜单 (选择/复制)
 /// - 选择模式: 工具栏切换, 支持多选 + 全选 + 批量删除
 ///
 /// **搜索与翻译**:
 /// - `searchManager.updateQuery` 内部 300ms 防抖 + 取消上次任务
 /// - View 通过 `onChange(of: searchInput)` 触发, debounce 内部决定是否真搜索
-/// - 中文输入时在后台通过本地翻译模型转为英文后再搜索
+/// - iOS 18+ 中文输入用系统 Translation 框架转为英文; iOS 18 以下原文搜索
 /// - 离开 View 时 `.onDisappear { searchManager.cancel() }` 显式取消
 struct SearchView: View {
     @EnvironmentObject private var searchManager: SearchManager
@@ -19,18 +19,38 @@ struct SearchView: View {
     @EnvironmentObject private var coreDataManager: CoreDataManager
 
     @State private var searchInput: String = ""
-    @State private var isTranslating: Bool = false
-    @State private var pendingTranslation: String = ""
-    @State private var translationConfig: TranslationSession.Configuration?
+    @State private var pendingTranslation = ""
+    @State private var isTranslating = false
+    @State private var translationRequestID = 0
 
     // MARK: Select mode
     @State private var isSelectMode: Bool = false
     @State private var selectedIds: Set<String> = []
-    @State private var previewId: String?
 
     @FocusState private var isSearchFocused: Bool
 
+    @ViewBuilder
     var body: some View {
+        if #available(iOS 18.0, *) {
+            mainContent
+                .modifier(SystemTranslationModifier(
+                    sourceText: pendingTranslation,
+                    requestID: translationRequestID,
+                    onSuccess: { translatedText in
+                        isTranslating = false
+                        searchManager.updateQuery(translatedText)
+                    },
+                    onFailure: {
+                        isTranslating = false
+                        searchManager.updateQuery(pendingTranslation)
+                    }
+                ))
+        } else {
+            mainContent
+        }
+    }
+
+    private var mainContent: some View {
         VStack(spacing: 0) {
             searchBar
             Divider()
@@ -39,118 +59,66 @@ struct SearchView: View {
         .navigationTitle("智能搜索")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { selectionToolbar }
-        .onDisappear { searchManager.cancel() }
+        .onDisappear {
+            searchManager.cancel()
+            pendingTranslation = ""
+            isTranslating = false
+        }
         .onChange(of: searchInput) { newValue in
             let trimmed = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else {
                 searchManager.updateQuery("")
                 pendingTranslation = ""
-                translationConfig = nil
                 isTranslating = false
                 return
             }
-            if containsCJKCharacters(trimmed) {
-                triggerTranslation(trimmed)
-            } else {
-                pendingTranslation = ""
-                translationConfig = nil
-                isTranslating = false
-                searchManager.updateQuery(trimmed)
-            }
-        }
-        .translationTask(translationConfig) { session in
-            guard let session else { return }
-            defer {
-                translationConfig = nil
-                isTranslating = false
-            }
-            do {
-                let text = pendingTranslation
-                guard !text.isEmpty else { return }
-                let response = try await session.translate(
-                    text,
-                    sourceLanguage: .init(identifier: "zh-Hans"),
-                    targetLanguage: .init(identifier: "en")
-                )
-                searchManager.updateQuery(response.targetText)
-            } catch {
-                let text = pendingTranslation
-                if !text.isEmpty {
-                    searchManager.updateQuery(text)
-                }
-            }
+            updateQuery(trimmed)
         }
     }
 
     // MARK: - Search Bar
 
     private var searchBar: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                TextField("试试 \"海边日落\" \"人物\" \"咖啡杯\"", text: $searchInput)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .submitLabel(.search)
-                    .focused($isSearchFocused)
-                .onSubmit {
-                    isSearchFocused = false
-                    let trimmed = searchInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    if containsCJKCharacters(trimmed) {
-                        triggerTranslation(trimmed)
-                    } else {
-                        pendingTranslation = ""
-                        translationConfig = nil
-                        isTranslating = false
-                        searchManager.updateQuery(trimmed)
-                    }
-                }
-                if isTranslating {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if searchManager.isSearching {
-                    ProgressView()
-                        .scaleEffect(0.85)
-                } else if !searchInput.isEmpty {
-                    Button {
-                        searchInput = ""
-                        searchManager.updateQuery("")
-                        pendingTranslation = ""
-                        translationConfig = nil
-                        isTranslating = false
-                        exitSelectMode()
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.plain)
-                }
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField("试试 \"海边日落\" \"人物\" \"咖啡杯\"", text: $searchInput)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($isSearchFocused)
+            .onSubmit {
+                isSearchFocused = false
+                let trimmed = searchInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                updateQuery(trimmed)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color(uiColor: .secondarySystemBackground))
-            )
-            .padding(.horizontal)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-
-            if isTranslating {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text("正在翻译为英文...")
-                        .font(.caption2)
+            if isTranslating || searchManager.isSearching {
+                ProgressView()
+                    .scaleEffect(0.85)
+            } else if !searchInput.isEmpty {
+                Button {
+                    searchInput = ""
+                    searchManager.updateQuery("")
+                    pendingTranslation = ""
+                    isTranslating = false
+                    exitSelectMode()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
-                .padding(.horizontal)
-                .padding(.bottom, 4)
+                .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(uiColor: .secondarySystemBackground))
+        )
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Selection Toolbar
@@ -188,7 +156,7 @@ struct SearchView: View {
             errorState(message: error)
         } else if searchManager.query.isEmpty {
             promptState
-        } else if searchManager.isSearching && searchManager.hits.isEmpty {
+        } else if (isTranslating || searchManager.isSearching) && searchManager.hits.isEmpty {
             searchingState
         } else if searchManager.hits.isEmpty {
             emptyState
@@ -204,7 +172,7 @@ struct SearchView: View {
                 .foregroundStyle(.tint)
             Text("用一句话描述你想找的照片")
                 .font(.headline)
-            Text("支持中英文输入,中文会自动翻译为英文搜索。全部在本地完成,不会上传到任何服务器。")
+            Text("iOS 18 及以上中文会使用系统翻译为英文搜索;低版本会直接按原文搜索。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -408,32 +376,67 @@ struct SearchView: View {
         }
     }
 
-    // MARK: - CJK Detection & Translation
+    private func updateQuery(_ text: String) {
+        guard containsCJKCharacters(text), #available(iOS 18.0, *) else {
+            pendingTranslation = ""
+            isTranslating = false
+            searchManager.updateQuery(text)
+            return
+        }
+
+        pendingTranslation = text
+        isTranslating = true
+        translationRequestID += 1
+    }
 
     private func containsCJKCharacters(_ text: String) -> Bool {
         text.unicodeScalars.contains { scalar in
             (0x4E00...0x9FFF).contains(scalar.value)
-            || (0x3400...0x4DBF).contains(scalar.value)
-            || (0xF900...0xFAFF).contains(scalar.value)
-            || (0x2E80...0x2EFF).contains(scalar.value)
-            || (0x3000...0x303F).contains(scalar.value)
+                || (0x3400...0x4DBF).contains(scalar.value)
+                || (0xF900...0xFAFF).contains(scalar.value)
+                || (0x2E80...0x2EFF).contains(scalar.value)
+                || (0x3000...0x303F).contains(scalar.value)
         }
     }
 
-    private func triggerTranslation(_ text: String) {
-        guard #available(iOS 17.4, *) else {
-            searchManager.updateQuery(text)
-            return
-        }
-        isTranslating = true
-        pendingTranslation = text
-        translationConfig = TranslationSession.Configuration(
-            source: .init(identifier: "zh-Hans"),
-            target: .init(identifier: "en")
-        )
-    }
 }
 
+@available(iOS 18.0, *)
+struct SystemTranslationModifier: ViewModifier {
+    let sourceText: String
+    let requestID: Int
+    let onSuccess: @MainActor (String) -> Void
+    let onFailure: @MainActor () -> Void
+
+    @State private var configuration: TranslationSession.Configuration?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: requestID) { _ in
+                guard !sourceText.isEmpty else {
+                    configuration = nil
+                    return
+                }
+                configuration = TranslationSession.Configuration(
+                    source: .init(identifier: "zh-Hans"),
+                    target: .init(identifier: "en")
+                )
+            }
+            .translationTask(configuration) { session in
+                let text = sourceText
+                guard !text.isEmpty else { return }
+
+                defer { configuration = nil }
+
+                do {
+                    let response = try await session.translate(text)
+                    onSuccess(response.targetText)
+                } catch {
+                    onFailure()
+                }
+            }
+    }
+}
 // MARK: - SearchHitCard
 
 private struct SearchHitCard: View {

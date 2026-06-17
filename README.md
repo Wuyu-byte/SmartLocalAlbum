@@ -16,7 +16,6 @@ My own photo library got out of hand — thousands of screenshots, near-duplicat
 
 - A way to find a specific photo without scrolling forever
 - A way to spot duplicates without picking through them one by one
-- A way to filter by rough metadata (date, place, size) when I sort of remember when/where a photo was taken
 
 I didn't want to upload anything to the cloud for any of this, and I didn't want a subscription. So I built this for myself, and I'm sharing it in case someone else finds it useful.
 
@@ -29,7 +28,6 @@ Everything runs locally on the device. No server, no account, no analytics.
 - 🔍 **Smart search** — Describe a photo in natural language ("beach sunset", "cat on a sofa", "white coffee cup") and search local embeddings. Uses MobileCLIP-S2 if the model is bundled; falls back to a mock extractor otherwise.
 - 🧬 **Duplicate detection** — Perceptual hash (dHash) + union-find groups near-identical photos. Pick a threshold (strict / near / similar) and clean up the ones you don't want.
 - 🏷️ **Smart categories** — Create a category with a text prompt or a few reference images, then the app auto-assigns matching photos.
-- 📅 **Metadata filter** — Combine a date range, location, and file-size range to narrow things down.
 - ♻️ **Recycle bin** — Deletions go to a recycle bin first. Permanent delete still triggers the iOS system confirmation, so nothing is unrecoverable by accident.
 
 ---
@@ -62,7 +60,7 @@ SmartLocalAlbum/
                       PerceptualHash, SimilarityClassifier, WidgetShared
     Utils/            VectorUtils
     Views/            HomeView, SearchView, DuplicateGroupsView,
-                      MetadataFilterView, RecycleBinView, PhotoPreviewView,
+                      RecycleBinView, PhotoPreviewView,
                       CategoryDetailView, CreateCategoryView, LiveAlbumsView,
                       ExportSheetView, OnboardingView, etc.
     Resources/        Info.plist, Models/*.mlpackage
@@ -76,7 +74,7 @@ SmartLocalAlbum/
 
 1. Open `SmartLocalAlbum.xcodeproj` in Xcode 15+.
 2. Pick the `SmartLocalAlbum` scheme and an iPhone simulator or device.
-3. Run. Without the MobileCLIP model files, search results won't be accurate, but the rest of the UI works (categories, dedup, filtering, recycle bin).
+3. Run. Without the MobileCLIP model files, search results won't be accurate, but the rest of the UI works (categories, dedup, recycle bin).
 
 If you want the real search/categorization, you need to add the model files to the target:
 

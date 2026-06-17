@@ -29,7 +29,6 @@
 - 🔍 **智能搜索** —— 用自然语言描述照片（"海边日落"、"沙发上的猫"、"白咖啡杯"），在本地 embedding 里查。需要 MobileCLIP-S2 模型，没模型时会用 mock，效果不准但 UI 流程能跑。
 - 🧬 **去重** —— 感知哈希（dHash）+ 并查集，把相似的照片归到一组。可以选严格度（精确 / 较近 / 相似），然后挑要留哪张。
 - 🏷️ **智能分类** —— 用一句话描述或者选几张参考照片建一个分类，App 自动把匹配的照片归进去。
-- 📅 **元数据筛选** —— 组合时间范围、地点、文件大小一起筛。
 - ♻️ **回收站** —— 删除先进回收站，永久删除才会触发 iOS 系统确认框，避免误删。
 
 ---
@@ -62,7 +61,7 @@ SmartLocalAlbum/
                       PerceptualHash, SimilarityClassifier, WidgetShared
     Utils/            VectorUtils
     Views/            HomeView, SearchView, DuplicateGroupsView,
-                      MetadataFilterView, RecycleBinView, PhotoPreviewView,
+                      RecycleBinView, PhotoPreviewView,
                       CategoryDetailView, CreateCategoryView, LiveAlbumsView,
                       ExportSheetView, OnboardingView, etc.
     Resources/        Info.plist, Models/*.mlpackage
@@ -76,7 +75,7 @@ SmartLocalAlbum/
 
 1. 用 Xcode 15+ 打开 `SmartLocalAlbum.xcodeproj`
 2. 选 `SmartLocalAlbum` scheme 和一个 iPhone 模拟器或真机
-3. Run。没装模型文件也能跑，去重、分类、筛选、回收站这些都能用，只是搜索效果不准
+3. Run。没装模型文件也能跑，去重、分类、回收站这些都能用，只是搜索效果不准
 
 想要真实可用的搜索 / 分类效果，需要把模型文件加到 target：
 
