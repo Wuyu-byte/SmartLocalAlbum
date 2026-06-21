@@ -7,7 +7,7 @@ struct OnboardingView: View {
         (
             "rectangle.stack.badge.plus",
             "创建分类",
-            "用一句文字描述（如“猫”、“海边”）或几张参考照片，告诉 App 你想找什么样的照片。"
+            "选择几张参考照片，告诉 App 你想留下哪类照片。"
         ),
         (
             "photo.stack",

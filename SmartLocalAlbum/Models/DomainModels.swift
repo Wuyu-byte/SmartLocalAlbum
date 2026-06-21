@@ -31,7 +31,7 @@ struct SmartCategoryModel: Identifiable, Hashable {
     var sourceLabel: String {
         switch creationMode {
         case .naturalLanguage:
-            return "文字描述"
+            return "旧分类"
         case .referenceImages:
             return matchingEmbeddingKind.isLegacy ? "旧参考图片" : "参考图片"
         case .portraitReference:

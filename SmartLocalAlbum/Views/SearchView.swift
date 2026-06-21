@@ -11,7 +11,7 @@ import Translation
 /// **搜索与翻译**:
 /// - `searchManager.updateQuery` 内部 300ms 防抖 + 取消上次任务
 /// - View 通过 `onChange(of: searchInput)` 触发, debounce 内部决定是否真搜索
-/// - iOS 18+ 中文输入用系统 Translation 框架转为英文; iOS 18 以下原文搜索
+/// - 中文输入会尽量通过系统翻译辅助搜索,必要时提示用户下载离线翻译包
 /// - 离开 View 时 `.onDisappear { searchManager.cancel() }` 显式取消
 struct SearchView: View {
     @EnvironmentObject private var searchManager: SearchManager
@@ -172,7 +172,7 @@ struct SearchView: View {
                 .foregroundStyle(.tint)
             Text("用一句话描述你想找的照片")
                 .font(.headline)
-            Text("iOS 18 及以上中文会使用系统翻译为英文搜索;低版本会直接按原文搜索。")
+            Text("可以用中文或英文描述照片；中文搜索可能需要先下载系统离线翻译包。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

@@ -7,8 +7,6 @@ struct CreateCategoryView: View {
     @EnvironmentObject private var scanManager: ScanManager
 
     @State private var name = ""
-    @State private var classificationMode: CreateCategoryMode = .referenceImages
-    @State private var promptText = ""
     @State private var threshold = Double(SmartCategoryManager.referenceFastDefaultThreshold)
     @State private var isPortrait = false
     @State private var selectedItems: [PhotosPickerItem] = []
@@ -16,19 +14,12 @@ struct CreateCategoryView: View {
     @State private var sampleAssetIds: [String] = []
     @State private var isCreating = false
     @State private var errorMessage: String?
-    @State private var pendingPromptTranslation = ""
-    @State private var promptTranslationRequestID = 0
 
     private var canCreate: Bool {
         guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isCreating else {
             return false
         }
-        switch classificationMode {
-        case .naturalLanguage:
-            return !promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .referenceImages:
-            return (1...10).contains(sampleImages.count)
-        }
+        return (1...10).contains(sampleImages.count)
     }
 
     private var sampleCountText: String {
@@ -40,55 +31,20 @@ struct CreateCategoryView: View {
     }
 
     private var thresholdRange: ClosedRange<Double> {
-        switch classificationMode {
-        case .naturalLanguage:
-            return 0.05...0.40
-        case .referenceImages:
-            return 0.10...0.99
-        }
+        0.10...0.99
     }
 
     private var defaultThreshold: Double {
-        switch classificationMode {
-        case .naturalLanguage:
-            return Double(SmartCategoryManager.naturalLanguageDefaultThreshold)
-        case .referenceImages:
-            return Double(isPortrait
-                ? SmartCategoryManager.portraitDefaultThreshold
-                : SmartCategoryManager.referenceFastDefaultThreshold)
-        }
+        Double(isPortrait
+            ? SmartCategoryManager.portraitDefaultThreshold
+            : SmartCategoryManager.referenceFastDefaultThreshold)
     }
 
-    @ViewBuilder
     var body: some View {
-        if #available(iOS 18.0, *) {
-            formContent
-                .modifier(SystemTranslationModifier(
-                    sourceText: pendingPromptTranslation,
-                    requestID: promptTranslationRequestID,
-                    onSuccess: { translatedPrompt in
-                        Task { await createCategory(promptOverride: translatedPrompt) }
-                    },
-                    onFailure: {
-                        Task { await createCategory(promptOverride: pendingPromptTranslation) }
-                    }
-                ))
-        } else {
-            formContent
-        }
-    }
-
-    private var formContent: some View {
         Form {
             Section("分类") {
                 TextField("分类名称", text: $name)
                     .textInputAutocapitalization(.words)
-
-                Picker("分类方式", selection: $classificationMode) {
-                    Text("参考图片").tag(CreateCategoryMode.referenceImages)
-                    Text("文字描述").tag(CreateCategoryMode.naturalLanguage)
-                }
-                .pickerStyle(.segmented)
 
                 VStack(alignment: .leading) {
                     HStack {
@@ -103,88 +59,70 @@ struct CreateCategoryView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if classificationMode == .referenceImages {
-                    Toggle(isOn: $isPortrait) {
-                        Label("按人脸找照片", systemImage: "person.crop.square")
-                    }
+                Toggle(isOn: $isPortrait) {
+                    Label("按人脸找照片", systemImage: "person.crop.square")
+                }
 
-                    if !isPortrait {
-                        Text("参考照片会在本机生成特征，用来寻找主题、风格或场景相近的照片。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                if !isPortrait {
+                    Text("参考照片会在本机生成特征，用来寻找主题、风格或场景相近的照片。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            if classificationMode == .naturalLanguage {
-                Section("想找什么照片") {
-                    TextEditor(text: $promptText)
-                        .frame(minHeight: 96)
-                        .overlay(alignment: .topLeading) {
-                            if promptText.isEmpty {
-                                Text("例如：猫，猫咪，可爱的猫，家里的猫")
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.top, 8)
-                                    .padding(.leading, 5)
-                                    .allowsHitTesting(false)
-                            }
-                        }
+            Section("参考照片") {
+                PhotosPicker(
+                    selection: $selectedItems,
+                    maxSelectionCount: 10,
+                    matching: .images,
+                    photoLibrary: .shared()
+                ) {
+                    Label("选择 1 到 10 张参考照片", systemImage: "photo.on.rectangle.angled")
                 }
-            } else {
-                Section("参考照片") {
-                    PhotosPicker(
-                        selection: $selectedItems,
-                        maxSelectionCount: 10,
-                        matching: .images,
-                        photoLibrary: .shared()
-                    ) {
-                        Label("选择 1 到 10 张参考照片", systemImage: "photo.on.rectangle.angled")
-                    }
 
-                    Text(sampleCountText)
-                        .foregroundColor(sampleCountColor)
+                Text(sampleCountText)
+                    .foregroundColor(sampleCountColor)
 
-                    if !sampleImages.isEmpty {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(Array(sampleImages.enumerated()), id: \.offset) { index, image in
-                                GeometryReader { proxy in
-                                    ZStack(alignment: .topTrailing) {
-                                        Image(uiImage: image)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: proxy.size.width, height: proxy.size.width)
-                                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                                            .clipped()
+                if !sampleImages.isEmpty {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
+                        ForEach(Array(sampleImages.enumerated()), id: \.offset) { index, image in
+                            GeometryReader { proxy in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: proxy.size.width, height: proxy.size.width)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .clipped()
 
-                                        Button {
-                                            removeSample(at: index)
-                                        } label: {
-                                            Image(systemName: "xmark")
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(.white)
-                                                .frame(width: 22, height: 22)
-                                                .background(.black.opacity(0.62), in: Circle())
-                                                .overlay(
-                                                    Circle()
-                                                        .strokeBorder(.white.opacity(0.24), lineWidth: 1)
-                                                )
-                                                .padding(5)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .accessibilityLabel("移除参考照片")
+                                    Button {
+                                        removeSample(at: index)
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(.white)
+                                            .frame(width: 22, height: 22)
+                                            .background(.black.opacity(0.62), in: Circle())
+                                            .overlay(
+                                                Circle()
+                                                    .strokeBorder(.white.opacity(0.24), lineWidth: 1)
+                                            )
+                                            .padding(5)
                                     }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("移除参考照片")
                                 }
-                                .aspectRatio(1, contentMode: .fit)
                             }
+                            .aspectRatio(1, contentMode: .fit)
                         }
-                        .padding(.vertical, 4)
                     }
+                    .padding(.vertical, 4)
                 }
             }
 
             Section {
                 Button {
-                    Task { await beginCreateCategory() }
+                    Task { await createCategory() }
                 } label: {
                     HStack {
                         if isCreating {
@@ -205,10 +143,6 @@ struct CreateCategoryView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("取消") { dismiss() }
             }
-        }
-        .onChange(of: classificationMode) { _ in
-            isPortrait = false
-            threshold = defaultThreshold
         }
         .onChange(of: isPortrait) { _ in
             threshold = defaultThreshold
@@ -255,63 +189,22 @@ struct CreateCategoryView: View {
         }
     }
 
-    private func beginCreateCategory() async {
-        switch classificationMode {
-        case .referenceImages:
-            await createCategory(promptOverride: nil)
-        case .naturalLanguage:
-            let trimmedPrompt = promptText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard containsCJKCharacters(trimmedPrompt), #available(iOS 18.0, *) else {
-                await createCategory(promptOverride: nil)
-                return
-            }
-
-            isCreating = true
-            pendingPromptTranslation = trimmedPrompt
-            promptTranslationRequestID += 1
-        }
-    }
-
-    private func createCategory(promptOverride: String?) async {
+    private func createCategory() async {
         isCreating = true
         defer { isCreating = false }
 
         do {
-            switch classificationMode {
-            case .referenceImages:
-                _ = try await categoryManager.createReferenceImageCategory(
-                    name: name,
-                    sampleImages: sampleImages,
-                    sampleAssetIds: sampleAssetIds,
-                    threshold: Float(threshold),
-                    isPortrait: isPortrait
-                )
-            case .naturalLanguage:
-                _ = try await categoryManager.createNaturalLanguageCategory(
-                    name: name,
-                    promptText: promptOverride ?? promptText,
-                    threshold: Float(threshold)
-                )
-            }
+            _ = try await categoryManager.createReferenceImageCategory(
+                name: name,
+                sampleImages: sampleImages,
+                sampleAssetIds: sampleAssetIds,
+                threshold: Float(threshold),
+                isPortrait: isPortrait
+            )
             scanManager.reclassifySavedEmbeddings()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
     }
-
-    private func containsCJKCharacters(_ text: String) -> Bool {
-        text.unicodeScalars.contains { scalar in
-            (0x4E00...0x9FFF).contains(scalar.value)
-                || (0x3400...0x4DBF).contains(scalar.value)
-                || (0xF900...0xFAFF).contains(scalar.value)
-                || (0x2E80...0x2EFF).contains(scalar.value)
-                || (0x3000...0x303F).contains(scalar.value)
-        }
-    }
-}
-
-private enum CreateCategoryMode: Hashable {
-    case referenceImages
-    case naturalLanguage
 }

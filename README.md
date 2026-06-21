@@ -27,7 +27,7 @@ Everything runs locally on the device. No server, no account, no analytics.
 
 - 🔍 **Smart search** — Describe a photo in natural language ("beach sunset", "cat on a sofa", "white coffee cup") and search local embeddings. Uses MobileCLIP-S2 if the model is bundled; falls back to a mock extractor otherwise.
 - 🧬 **Duplicate detection** — Perceptual hash (dHash) + union-find groups near-identical photos. Pick a threshold (strict / near / similar) and clean up the ones you don't want.
-- 🏷️ **Smart categories** — Create a category with a text prompt or a few reference images, then the app auto-assigns matching photos.
+- 🏷️ **Smart categories** — Create a category with a few reference images, then the app auto-assigns matching photos.
 - ♻️ **Recycle bin** — Deletions go to a recycle bin first. Permanent delete still triggers the iOS system confirmation, so nothing is unrecoverable by accident.
 
 ---

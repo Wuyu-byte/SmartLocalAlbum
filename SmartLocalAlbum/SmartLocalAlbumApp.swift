@@ -41,7 +41,6 @@ struct SmartLocalAlbumApp: App {
             wrappedValue: SmartCategoryManager(
                 coreDataManager: coreDataManager,
                 fastImageEmbeddingExtractor: fastImageExtractor,
-                textEmbeddingExtractor: textExtractor,
                 faceEmbeddingExtractor: faceExtractor
             )
         )

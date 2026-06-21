@@ -14,10 +14,22 @@ struct HomeView: View {
     @State private var isShowingOnboarding = false
     @State private var errorMessage: String?
     @State private var selectedTab: Tab = .home
+    @State private var categoryLayout: CategoryLayout = .strictness
 
     private let hasSeenOnboardingKey = "SmartLocalAlbum.hasSeenOnboarding"
 
     enum Tab: Hashable { case home, search, live }
+    private enum CategoryLayout: String, CaseIterable, Hashable {
+        case strictness
+        case timeline
+
+        var title: String {
+            switch self {
+            case .strictness: return "严格度"
+            case .timeline: return "时间线"
+            }
+        }
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -67,23 +79,11 @@ struct HomeView: View {
                         EmptyStateView(
                             title: "还没有分类",
                             systemImage: "rectangle.stack.badge.plus",
-                            message: "用一句描述或几张参考照片，先建一个你想留下的集合。"
+                            message: "选几张参考照片，先建一个你想留下的集合。"
                         )
                     } else {
-                        Section("我的分类") {
-                            ForEach(categories) { category in
-                                CategoryRowView(
-                                    category: category,
-                                    onThresholdChanged: { threshold in
-                                        updateThreshold(categoryId: category.id, threshold: threshold)
-                                    },
-                                    onReclassify: {
-                                        scanManager.reclassifySavedEmbeddings()
-                                    }
-                                )
-                            }
-                            .onDelete(perform: deleteCategories)
-                        }
+                        categoryLayoutPicker
+                        categorySections
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -271,9 +271,13 @@ struct HomeView: View {
     }
 
     private func deleteCategories(at offsets: IndexSet) {
+        deleteCategories(in: arrangedCategories, at: offsets)
+    }
+
+    private func deleteCategories(in source: [SmartCategoryModel], at offsets: IndexSet) {
         do {
             for index in offsets {
-                try categoryManager.deleteCategory(categoryId: categories[index].id)
+                try categoryManager.deleteCategory(categoryId: source[index].id)
             }
             loadCategories()
         } catch {
@@ -281,6 +285,102 @@ struct HomeView: View {
         }
     }
 
+    private var arrangedCategories: [SmartCategoryModel] {
+        switch categoryLayout {
+        case .strictness:
+            return categories.sorted {
+                if $0.threshold == $1.threshold {
+                    return $0.updatedAt > $1.updatedAt
+                }
+                return $0.threshold > $1.threshold
+            }
+        case .timeline:
+            return categories.sorted {
+                if Calendar.current.isDate($0.createdAt, inSameDayAs: $1.createdAt) {
+                    return $0.updatedAt > $1.updatedAt
+                }
+                return $0.createdAt > $1.createdAt
+            }
+        }
+    }
+
+    private var timelineSections: [CategoryTimelineSection] {
+        let grouped = Dictionary(grouping: arrangedCategories) { category in
+            Calendar.current.dateInterval(of: .month, for: category.createdAt)?.start ?? category.createdAt
+        }
+
+        return grouped.keys.sorted(by: >).map { monthStart in
+            CategoryTimelineSection(
+                monthStart: monthStart,
+                title: Self.monthFormatter.string(from: monthStart),
+                categories: grouped[monthStart, default: []].sorted { $0.createdAt > $1.createdAt }
+            )
+        }
+    }
+
+    private var categoryLayoutPicker: some View {
+        Section {
+            Picker("分类排版", selection: $categoryLayout) {
+                ForEach(CategoryLayout.allCases, id: \.self) { layout in
+                    Text(layout.title).tag(layout)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("我的分类")
+        }
+    }
+
+    @ViewBuilder
+    private var categorySections: some View {
+        switch categoryLayout {
+        case .strictness:
+            Section("严格度高到低") {
+                ForEach(arrangedCategories) { category in
+                    categoryRow(category)
+                }
+                .onDelete(perform: deleteCategories)
+            }
+        case .timeline:
+            ForEach(timelineSections) { section in
+                Section(section.title) {
+                    ForEach(section.categories) { category in
+                        categoryRow(category)
+                    }
+                    .onDelete { offsets in
+                        deleteCategories(in: section.categories, at: offsets)
+                    }
+                }
+            }
+        }
+    }
+
+    private func categoryRow(_ category: SmartCategoryModel) -> some View {
+        CategoryRowView(
+            category: category,
+            onThresholdChanged: { threshold in
+                updateThreshold(categoryId: category.id, threshold: threshold)
+            },
+            onReclassify: {
+                scanManager.reclassifySavedEmbeddings()
+            }
+        )
+    }
+
+    private static let monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.dateFormat = "yyyy年M月"
+        return formatter
+    }()
+
+}
+
+private struct CategoryTimelineSection: Identifiable {
+    var id: Date { monthStart }
+    let monthStart: Date
+    let title: String
+    let categories: [SmartCategoryModel]
 }
 
 private struct CategoryRowView: View {
@@ -362,7 +462,7 @@ private struct CategoryRowView: View {
 
         switch category.creationMode {
         case .naturalLanguage:
-            return "\(category.sourceLabel) · \(category.promptText ?? category.name)"
+            return "旧分类 · 建议用参考照片重建"
         case .referenceImages, .portraitReference:
             return "\(category.sourceLabel) · \(category.sampleAssetIds.count) 张参考"
         }
